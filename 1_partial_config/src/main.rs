@@ -1,5 +1,6 @@
 use clap::Clap;
 use serde::{Deserialize, Serialize};
+use serde_json;
 
 #[derive(Clap, Debug, Deserialize, Serialize)]
 struct Config {

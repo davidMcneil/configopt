@@ -1,5 +1,6 @@
 use clap::Clap;
 use serde::{Deserialize, Serialize};
+use serde_json;
 
 // Adding serde's Deserialize and Serialize lets us read/write our Config from/to anywhere in any
 // format serde supports.
