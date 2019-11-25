@@ -22,13 +22,13 @@ The [`clap`](https://github.com/clap-rs/clap), [`structopt`](https://github.com/
 
 ## Make the Config De/Serializable
 
-`serde` makes [this](0_serde_config/src/main.rs) trivial.
+`serde` makes the [code](0_serde_config/src/main.rs) trivial.
 
 ## Partial Configuration
 
-Create a [`PartialConfig`](1_serde_config/src/main.rs) struct that allows patching part of the configuration.
+We are going to add a `PartialConfig` struct to the [code](1_partial_config/src/main.rs). This allows patching part of the configuration.
 
-If all of our arguments have a default value, this is actually all we need to meet all of our objectives. The steps are:
+If all of our arguments have a default value, this is actually all we need to meet all of our objectives. To go over the steps again:
 
 1. Define our configuration struct
 2. Create a struct for patching parts of the configuration (`PartialConfig`). This could be automated with a macro.
