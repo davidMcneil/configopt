@@ -1,0 +1,11 @@
+[package]
+name = "configopt"
+version = "0.1.0"
+authors = ["David McNeil <mcneil.david2@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+structopt = "0.3.7"
+typed-arena = "2.0.0"
+colosseum = "0.2.2"
+lazy_static = "1.4.0"

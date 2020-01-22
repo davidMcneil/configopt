@@ -1,7 +1,22 @@
 {
     "cSpell.words": [
+        "Populator",
         "argmatches",
+        "clippy",
+        "configopt",
+        "configopts",
+        "hacky",
+        "idents",
+        "inflector",
+        "peekable",
+        "positionals",
+        "prepend",
         "recurse",
-        "serde's"
+        "serde's",
+        "structopt",
+        "structopt's",
+        "structs",
+        "subcommand",
+        "subcommands"
     ]
 }
