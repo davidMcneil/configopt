@@ -1,15 +1,8 @@
 [workspace]
 
 members = [
-    "0_serde_config",
-    "1_partial_config",
-    "2_unified_config_no_macro",
-    "3_unified_config_with_macro",
     "configopt",
-    "partial_derive",
-    "parse_with_defaults_derive",
-    "test_app",
-    "test_app_clap_derive",
-    "test_app_structopt",
+    "configopt-derive",
+    "partial-derive",
     "ticli",
 ]

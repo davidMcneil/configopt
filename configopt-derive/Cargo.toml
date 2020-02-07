@@ -1,0 +1,14 @@
+[package]
+name = "configopt-derive"
+version = "0.1.0"
+authors = ["David McNeil <mcneil.david2@gmail.com>"]
+edition = "2018"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = "1.0.13"
+proc-macro2 = "1.0.7"
+quote = "1.0.2"
+Inflector = { version="0.11.4", default-features = false }

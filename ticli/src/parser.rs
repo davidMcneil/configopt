@@ -14,12 +14,10 @@ fn long(s: &str) -> Option<(&str, Option<&str>)> {
     match split1(s, LONG_PREFIX) {
         (_, None) => None,
         ("", Some("")) => None,
-        ("", Some(long)) => {
-            return match split1(long, LONG_DELIMITER) {
-                (_, None) => Some((long, None)),
-                (name, Some(value)) => Some((name, Some(value))),
-            };
-        }
+        ("", Some(long)) => match split1(long, LONG_DELIMITER) {
+            (_, None) => Some((long, None)),
+            (name, Some(value)) => Some((name, Some(value))),
+        },
         (_, Some(_)) => None,
     }
 }

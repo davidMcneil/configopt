@@ -5,7 +5,9 @@ authors = ["David McNeil <mcneil.david2@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-structopt = "0.3.7"
-typed-arena = "2.0.0"
 colosseum = "0.2.2"
+configopt-derive = { path = "../configopt-derive", version = "=0.1.0" }
 lazy_static = "1.4.0"
+partial-derive = { path = "../partial-derive", version = "=0.1.0" }
+structopt = "0.3.7"
+url = "2.0.0" # Used only to implment traits on `Url`

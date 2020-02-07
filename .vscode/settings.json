@@ -12,11 +12,13 @@
         "positionals",
         "prepend",
         "recurse",
+        "roids",
         "serde's",
         "structopt",
         "structopt's",
         "structs",
         "subcommand",
-        "subcommands"
+        "subcommands",
+        "unsync"
     ]
 }
