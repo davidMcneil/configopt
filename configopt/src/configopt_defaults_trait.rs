@@ -13,14 +13,19 @@ pub trait ConfigOptDefaults {
 
 /// Implement `ConfigOptDefaults` for a type that implements `ToString`.
 ///
-/// Due to lack of specialization this trait is needed.
-pub trait ConfigOptToString: ToString {}
+/// Due to lack of specialization this trait is needed. It also allows a different implementation
+/// between how a type is displayed and its `configopt` value.
+pub trait ConfigOptToString: ToString {
+    fn to_string(&self) -> String {
+        ToString::to_string(self)
+    }
+}
 
 impl ConfigOptToString for Url {}
 
 impl<T: ConfigOptToString> ConfigOptDefaults for T {
     fn arg_default(&self, _arg_path: &[String]) -> Option<OsString> {
-        Some(self.to_string().into())
+        Some(ConfigOptToString::to_string(self).into())
     }
 }
 
