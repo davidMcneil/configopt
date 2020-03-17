@@ -1,15 +1,12 @@
 mod arena_trait;
-mod configopt_defaults_trait;
 
 use arena_trait::Arena;
 use colosseum::{sync::Arena as SyncArena, unsync::Arena as UnsyncArena};
 use lazy_static::lazy_static;
-use std::ffi::OsString;
+use std::{ffi::OsString, path::PathBuf};
 use structopt::{clap::App, StructOpt};
 
-pub use configopt_defaults_trait::{ConfigOptDefaults, ConfigOptToString};
-pub use configopt_derive::ConfigOptDefaults;
-pub use partial_derive::Partial;
+pub use configopt_derive::ConfigOpt;
 
 lazy_static! {
     static ref DEFAULT_VALUE_STORE: SyncArena<OsString> = SyncArena::new();
@@ -28,14 +25,14 @@ fn set_defaults_impl<'a>(
     for arg in &mut app.p.opts {
         arg_path.push(String::from(arg.b.name));
         if let Some(default) = defaults.arg_default(arg_path.as_slice()) {
-            arg.v.default_val = Some(arena.alloc(default.into()));
+            arg.v.default_val = Some(arena.alloc(default));
         }
         arg_path.pop();
     }
     for (_, arg) in &mut app.p.positionals {
         arg_path.push(String::from(arg.b.name));
         if let Some(default) = defaults.arg_default(arg_path.as_slice()) {
-            arg.v.default_val = Some(arena.alloc(default.into()));
+            arg.v.default_val = Some(arena.alloc(default));
         }
         arg_path.pop();
     }
@@ -45,6 +42,20 @@ fn set_defaults_impl<'a>(
         set_defaults_impl(app, arg_path, defaults, arena);
         arg_path.pop();
     }
+}
+
+/// A lookup of default values
+pub trait ConfigOpt: Sized + StructOpt {
+    /// Construct an instance of a `structopt` struct using a set of defaults
+    fn from_args_with_defaults(defaults: &impl ConfigOptDefaults) -> Self {
+        from_args_with_defaults(defaults)
+    }
+}
+
+/// A lookup of default values
+pub trait ConfigOptDefaults {
+    /// Lookup a default value for the path to an argument
+    fn arg_default(&self, arg_path: &[String]) -> Option<OsString>;
 }
 
 /// Set the defaults for a `clap::App`
@@ -65,4 +76,9 @@ pub fn from_args_with_defaults<T: StructOpt>(defaults: &impl ConfigOptDefaults) 
 
     let matches = app.get_matches();
     T::from_clap(&matches)
+}
+
+/// TODO
+pub fn path_buf_to_default(path_buf: &PathBuf) -> OsString {
+    path_buf.clone().into_os_string()
 }

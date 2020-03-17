@@ -1,114 +1,27 @@
-extern crate proc_macro;
-
 use proc_macro2::{Span, TokenStream};
 use proc_macro_roids::{DeriveInputExt, IdentExt};
 use quote::{quote, quote_spanned};
 use syn::{
-    parse_macro_input, parse_quote, punctuated::Punctuated, spanned::Spanned, Attribute, Data,
-    DeriveInput, Field, Fields, Ident, Index, Token, Type,
+    parse_quote, punctuated::Punctuated, spanned::Spanned, Attribute, Data, DeriveInput, Field,
+    Fields, Ident, Index, Token, Type,
 };
 
-const PARTIAL_TYPE_PREFIX: &str = "Partial";
-const PARTIAL_ATTR_IDENT: &str = "partial";
+pub const PARTIAL_TYPE_PREFIX: &str = "Partial";
 
-#[proc_macro_derive(Partial, attributes(partial))]
-pub fn partial_derive(ast: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    let ast = parse_macro_input!(ast as DeriveInput);
-    let ident = &ast.ident;
-    let partial_ident = ident.prepend(PARTIAL_TYPE_PREFIX);
-    let partial_type = partial_type(ast.clone());
-    let partial_take = from_fields(&ast.data, &take_generator);
-    let partial_patch = from_fields(&ast.data, &patch_generator);
-    let partial_merge = from_fields(&ast.data, &merge_generator);
-    let partial_clear = from_fields(&ast.data, &clear_generator);
-    let partial_is_empty = from_fields(&ast.data, &is_empty_generator);
-    let partial_is_complete = from_fields(&ast.data, &is_complete_generator);
-    let partial_from = from_fields(&ast.data, &from_generator);
-    let partial_try_from = from_fields(&ast.data, &try_from_generator);
-    let lints = quote! {
-        #[allow(unused_variables)]
-        #[allow(unknown_lints)]
-        #[allow(
-            clippy::style,
-            clippy::complexity,
-            clippy::pedantic,
-            clippy::restriction,
-            clippy::perf,
-            clippy::deprecated,
-            clippy::nursery,
-            clippy::cargo
-        )]
-        #[deny(clippy::correctness)]
-        #[allow(dead_code, unreachable_code)]
-    };
-    let expanded = quote! {
-        #lints
-        #partial_type
-
-        #lints
-        impl #partial_ident {
-            /// Take each field from `other` and set it in `self`
-            fn take(&mut self, other: &mut #partial_ident) {
-                #partial_take
-            }
-
-            /// For each field in `self` if it is `None`, take the value from `other` and set it in `self`
-            fn patch(&mut self, other: &mut #partial_ident) {
-                #partial_patch
-            }
-
-            /// Take each field from `self` and set it in `other`
-            fn merge(&mut self, other: &mut #ident) {
-                #partial_merge
-            }
-
-            /// Clear all fields from `self`
-            fn clear(&mut self) {
-                #partial_clear
-            }
-
-            /// Check if all fields of `self` are `None`
-            fn is_empty(&self) -> bool {
-                #partial_is_empty
-            }
-
-            /// Check if all fields of `self` are `Some` applied recursively
-            fn is_complete(&self) -> bool {
-                #partial_is_complete
-            }
-        }
-
-        #lints
-        impl ::std::convert::From<#ident> for #partial_ident {
-            fn from(other: #ident) -> Self {
-                #partial_from
-            }
-        }
-
-        #lints
-        impl ::std::convert::TryFrom<#partial_ident> for #ident {
-            type Error = #partial_ident;
-            fn try_from(partial: #partial_ident) -> Result<Self, Self::Error> {
-                #partial_try_from
-            }
-        }
-    };
-    proc_macro::TokenStream::from(expanded)
-}
-
-/// Check if a field is annotated with #[partial]
-fn has_partial_attr(field: &Field) -> bool {
-    field
-        .attrs
-        .iter()
-        .any(|a| a.path.is_ident(PARTIAL_ATTR_IDENT))
+/// Check if a field is annotated with #[configopt(nested)]
+fn has_configopt_nested_attr(field: &Field) -> bool {
+    proc_macro_roids::contains_tag(
+        &field.attrs,
+        &parse_quote!(configopt),
+        &parse_quote!(nested),
+    )
 }
 
 fn retain_attrs(attrs: &mut Vec<Attribute>, to_retain: &[Ident]) {
     attrs.retain(|a| to_retain.iter().any(|i| a.path.is_ident(i)))
 }
 
-fn partial_type(full_type: DeriveInput) -> DeriveInput {
+pub fn partial_type(full_type: DeriveInput) -> DeriveInput {
     let mut partial_type = full_type;
 
     // Change the ident to a partial ident
@@ -116,20 +29,20 @@ fn partial_type(full_type: DeriveInput) -> DeriveInput {
 
     // Get a list of attributes to retain on the partial type
     let retained_attrs = partial_type
-        .tag_parameters(&parse_quote!(partial), &parse_quote!(attrs))
+        .tag_parameters(&parse_quote!(configopt), &parse_quote!(attrs))
         .into_iter()
         .map(|meta| {
             proc_macro_roids::nested_meta_to_path(&meta)
-                .expect("#[partial(attrs(..))] expected a path not a Rust literal")
+                .expect("#[configopt(attrs(..))] expected a path not a Rust literal")
                 .get_ident()
                 .cloned()
-                .expect("#[partial(attrs(..))] expected an ident")
+                .expect("#[configopt(attrs(..))] expected an ident")
         })
         .collect::<Vec<_>>();
 
     // Get the derives for the partial type
     let derives = partial_type
-        .tag_parameters(&parse_quote!(partial), &parse_quote!(derive))
+        .tag_parameters(&parse_quote!(configopt), &parse_quote!(derive))
         .into_iter()
         .collect::<Punctuated<_, Token![,]>>();
 
@@ -154,47 +67,47 @@ fn partial_type(full_type: DeriveInput) -> DeriveInput {
             }
             Fields::Unit => {}
         },
-        Data::Enum(_) => panic!("`Partial` cannot be derived for enums"),
-        Data::Union(_) => panic!("`Partial` cannot be derived for unions"),
+        Data::Enum(_) => panic!("`ConfigOpt` cannot be derived for enums"),
+        Data::Union(_) => panic!("`ConfigOpt` cannot be derived for unions"),
     }
     partial_type
 }
 
 fn make_field_partial(field: &mut Field, retained_attrs: &[Ident]) {
-    let has_partial_attr = has_partial_attr(field);
+    let has_configopt_nested_attr = has_configopt_nested_attr(field);
     let ty = &mut field.ty;
 
-    // If the field had a partial attribute, modify the type with the partial type prefix
-    if has_partial_attr {
+    // If the field had a configopt type attribute, modify the type with the partial type prefix
+    if has_configopt_nested_attr {
         match ty {
             Type::Path(type_path) => {
                 if let Some(segment) = type_path.path.segments.last_mut() {
                     segment.ident = segment.ident.prepend(PARTIAL_TYPE_PREFIX);
                 } else {
-                    panic!("`#[partial]` could not find a last segment in the type path to make partial");
+                    panic!("`#[configopt]` could not find a last segment in the type path to make partial");
                 }
             }
             _ => {
-                panic!("`#[partial]` only supports types specified by a path");
+                panic!("`#[configopt]` only supports types specified by a path");
             }
         }
+    } else {
+        // Wrap the type in an Option. We intentionally do not use the fully qualified path to
+        // `Option` because some custom derives do not handle it correctly (ie `structopt`).
+        let ty: Type = parse_quote!(Option<#ty>);
+        field.ty = ty;
     }
 
     // Only retain attributes we have explicitly opted to preserve
     retain_attrs(&mut field.attrs, &retained_attrs);
-
-    // Wrap the type in an Option. We intentionally do not use the fully qualified path to
-    // `Option` because some custom derives do not handle it correctly (ie `structopt`).
-    let ty: Type = parse_quote!(Option<#ty>);
-    field.ty = ty;
 }
 
-enum StructFieldType {
+pub enum StructFieldType {
     Named,
     Unnamed,
 }
 
-fn from_fields(
+pub fn from_fields(
     data: &Data,
     generator: impl Fn(&Punctuated<Field, Token![,]>, StructFieldType) -> TokenStream,
 ) -> TokenStream {
@@ -222,7 +135,7 @@ fn field_ident(index: usize, field: &Field) -> TokenStream {
     }
 }
 
-fn take_generator(
+pub fn take_generator(
     fields: &Punctuated<Field, Token![,]>,
     _field_type: StructFieldType,
 ) -> TokenStream {
@@ -232,15 +145,9 @@ fn take_generator(
         .map(|(i, field)| {
             let ident = field_ident(i, field);
             let span = field.span();
-            if has_partial_attr(field) {
+            if has_configopt_nested_attr(field) {
                 quote_spanned! {span=>
-                    if let Some(mut other_val) = other.#ident.take() {
-                        if let Some(self_val) = &mut self.#ident {
-                            self_val.take(&mut other_val);
-                        } else {
-                            self.#ident = Some(other_val);
-                        }
-                    }
+                    self.#ident.take(&mut other.#ident);
                 }
             } else {
                 quote_spanned! {span=>
@@ -253,7 +160,7 @@ fn take_generator(
         .collect()
 }
 
-fn patch_generator(
+pub fn patch_generator(
     fields: &Punctuated<Field, Token![,]>,
     _field_type: StructFieldType,
 ) -> TokenStream {
@@ -263,15 +170,9 @@ fn patch_generator(
         .map(|(i, field)| {
             let ident = field_ident(i, field);
             let span = field.span();
-            if has_partial_attr(field) {
+            if has_configopt_nested_attr(field) {
                 quote_spanned! {span=>
-                    if let Some(self_val) = &mut self.#ident {
-                        if let Some(other_val) = &mut other.#ident {
-                            self_val.patch(other_val);
-                        }
-                    } else {
-                        self.#ident = other.#ident.take();
-                    }
+                    self.#ident.patch(&mut other.#ident);
                 }
             } else {
                 quote_spanned! {span=>
@@ -284,7 +185,7 @@ fn patch_generator(
         .collect()
 }
 
-fn merge_generator(
+pub fn merge_generator(
     fields: &Punctuated<Field, Token![,]>,
     _field_type: StructFieldType,
 ) -> TokenStream {
@@ -294,11 +195,9 @@ fn merge_generator(
         .map(|(i, field)| {
             let ident = field_ident(i, field);
             let span = field.span();
-            if has_partial_attr(field) {
+            if has_configopt_nested_attr(field) {
                 quote_spanned! {span=>
-                    if let Some(mut val) = self.#ident.take() {
-                        val.merge(&mut other.#ident)
-                    }
+                    self.#ident.merge(&mut other.#ident);
                 }
             } else {
                 quote_spanned! {span=>
@@ -311,7 +210,7 @@ fn merge_generator(
         .collect()
 }
 
-fn clear_generator(
+pub fn clear_generator(
     fields: &Punctuated<Field, Token![,]>,
     _field_type: StructFieldType,
 ) -> TokenStream {
@@ -321,22 +220,34 @@ fn clear_generator(
         .map(|(i, field)| {
             let ident = field_ident(i, field);
             let span = field.span();
-            quote_spanned! {span=>
-                self.#ident = None;
+            if has_configopt_nested_attr(field) {
+                quote_spanned! {span=>
+                    self.#ident.clear();
+                }
+            } else {
+                quote_spanned! {span=>
+                    self.#ident = None;
+                }
             }
         })
         .collect()
 }
 
-fn is_empty_generator(
+pub fn is_empty_generator(
     fields: &Punctuated<Field, Token![,]>,
     _field_type: StructFieldType,
 ) -> TokenStream {
     let field_tokens = fields.into_iter().enumerate().map(|(i, field)| {
         let ident = field_ident(i, field);
         let span = field.span();
-        quote_spanned! {span=>
-            self.#ident.is_none()
+        if has_configopt_nested_attr(field) {
+            quote_spanned! {span=>
+                self.#ident.is_empty()
+            }
+        } else {
+            quote_spanned! {span=>
+                self.#ident.is_none()
+            }
         }
     });
     quote! {
@@ -344,16 +255,16 @@ fn is_empty_generator(
     }
 }
 
-fn is_complete_generator(
+pub fn is_complete_generator(
     fields: &Punctuated<Field, Token![,]>,
     _field_type: StructFieldType,
 ) -> TokenStream {
     let field_tokens = fields.into_iter().enumerate().map(|(i, field)| {
         let ident = field_ident(i, field);
         let span = field.span();
-        if has_partial_attr(field) {
+        if has_configopt_nested_attr(field) {
             quote_spanned! {span=>
-                self.#ident.as_ref().map_or(false, |val| val.is_complete())
+                self.#ident.is_complete()
             }
         } else {
             quote_spanned! {span=>
@@ -366,16 +277,16 @@ fn is_complete_generator(
     }
 }
 
-fn from_generator(
+pub fn from_generator(
     fields: &Punctuated<Field, Token![,]>,
     field_type: StructFieldType,
 ) -> TokenStream {
     let field_tokens = fields.into_iter().enumerate().map(|(i, field)| {
         let ident = field_ident(i, field);
         let span = field.span();
-        let conversion = if has_partial_attr(field) {
+        let conversion = if has_configopt_nested_attr(field) {
             quote_spanned! {span=>
-                Some(other.#ident.into()),
+                other.#ident.into(),
             }
         } else {
             quote_spanned! {span=>
@@ -409,7 +320,7 @@ fn from_generator(
     }
 }
 
-fn try_from_generator(
+pub fn try_from_generator(
     fields: &Punctuated<Field, Token![,]>,
     field_type: StructFieldType,
 ) -> TokenStream {
@@ -417,9 +328,9 @@ fn try_from_generator(
         let ident = field_ident(i, field);
         let span = field.span();
         // We check upfront if the type `is_complete` so all these `unwrap`'s are ok
-        let conversion = if has_partial_attr(field) {
+        let conversion = if has_configopt_nested_attr(field) {
             quote_spanned! {span=>
-                ::std::convert::TryInto::try_into(partial.#ident.unwrap()).unwrap(),
+                ::std::convert::TryInto::try_into(partial.#ident).unwrap(),
             }
         } else {
             quote_spanned! {span=>

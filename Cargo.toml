@@ -3,6 +3,5 @@
 members = [
     "configopt",
     "configopt-derive",
-    "partial-derive",
     "ticli",
 ]

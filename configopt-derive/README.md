@@ -1,3 +1,3 @@
-# ConfigOpt Derive
+# Partial Derive
 
 TODO
