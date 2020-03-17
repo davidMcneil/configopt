@@ -13,8 +13,3 @@ syn = "1.0.14"
 proc-macro2 = "1.0.8"
 proc_macro_roids = "0.7.0"
 quote = "1.0.2"
-
-[dev-dependencies]
-serde = { version = "1.0.104", features = ["derive"] }
-serde_json = "1.0.46"
-structopt = "0.3.8"

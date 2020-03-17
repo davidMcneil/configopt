@@ -9,7 +9,6 @@ colosseum = "0.2.2"
 configopt-derive = { path = "../configopt-derive", version = "=0.1.0" }
 lazy_static = "1.4.0"
 structopt = "0.3.7"
-url = "2.0.0" # Used only to implment traits on `Url`
 
 [dev-dependencies]
 serde = { version = "1.0.104", features = ["derive"] }

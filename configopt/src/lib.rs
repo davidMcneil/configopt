@@ -44,7 +44,7 @@ fn set_defaults_impl<'a>(
     }
 }
 
-/// A lookup of default values
+/// TODO
 pub trait ConfigOpt: Sized + StructOpt {
     /// Construct an instance of a `structopt` struct using a set of defaults
     fn from_args_with_defaults(defaults: &impl ConfigOptDefaults) -> Self {

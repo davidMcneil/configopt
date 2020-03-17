@@ -3,5 +3,4 @@
 members = [
     "configopt",
     "configopt-derive",
-    "ticli",
 ]
