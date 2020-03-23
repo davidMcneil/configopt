@@ -9,7 +9,8 @@ colosseum = "0.2.2"
 configopt-derive = { path = "../configopt-derive", version = "=0.1.0" }
 lazy_static = "1.4.0"
 structopt = "0.3.7"
+serde = { version = "1.0.104", features = ["derive"] }
 
 [dev-dependencies]
-serde = { version = "1.0.104", features = ["derive"] }
 serde_json = "1.0.46"
+toml = "0.5.6"

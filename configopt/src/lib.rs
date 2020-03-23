@@ -1,11 +1,14 @@
 mod arena_trait;
+mod configopt_defaults_trait;
 
 use arena_trait::Arena;
 use colosseum::{sync::Arena as SyncArena, unsync::Arena as UnsyncArena};
 use lazy_static::lazy_static;
-use std::{ffi::OsString, path::PathBuf};
+use std::io::Write;
+use std::{env, ffi::OsString, io, process};
 use structopt::{clap::App, StructOpt};
 
+pub use configopt_defaults_trait::ConfigOptDefaults;
 pub use configopt_derive::ConfigOpt;
 
 lazy_static! {
@@ -44,18 +47,38 @@ fn set_defaults_impl<'a>(
     }
 }
 
+pub fn env_args_contains(s: &[&str]) -> bool {
+    for argument in env::args() {
+        if s.contains(&argument.as_str()) {
+            return true;
+        }
+    }
+    false
+}
+
 /// TODO
+pub trait TomlConfigGenerator {
+    fn toml_config(&self) -> String {
+        self.toml_config_with_prefix(&[])
+    }
+
+    fn toml_config_with_prefix(&self, serde_prefix: &[String]) -> String;
+
+    fn write_toml_config_and_exit(&self, code: i32) {
+        let out = io::stdout();
+        writeln!(&mut out.lock(), "{}", self.toml_config()).expect("Error writing Error to stdout");
+        process::exit(code);
+    }
+}
+
+/// TODO
+/// --generate-config
+/// --config-file
 pub trait ConfigOpt: Sized + StructOpt {
     /// Construct an instance of a `structopt` struct using a set of defaults
     fn from_args_with_defaults(defaults: &impl ConfigOptDefaults) -> Self {
         from_args_with_defaults(defaults)
     }
-}
-
-/// A lookup of default values
-pub trait ConfigOptDefaults {
-    /// Lookup a default value for the path to an argument
-    fn arg_default(&self, arg_path: &[String]) -> Option<OsString>;
 }
 
 /// Set the defaults for a `clap::App`
@@ -76,9 +99,4 @@ pub fn from_args_with_defaults<T: StructOpt>(defaults: &impl ConfigOptDefaults) 
 
     let matches = app.get_matches();
     T::from_clap(&matches)
-}
-
-/// TODO
-pub fn path_buf_to_default(path_buf: &PathBuf) -> OsString {
-    path_buf.clone().into_os_string()
 }
