@@ -1,15 +1,21 @@
 mod configopt_parser;
 mod structopt_parser;
 
-use crate::partial;
 use configopt_parser::ConfigOptAttr;
 use inflector::Inflector;
-use proc_macro2::Span;
+use proc_macro2::{Span, TokenStream};
+use proc_macro_roids::IdentExt;
 use std::{convert::Infallible, str::FromStr};
 use structopt_parser::StructOptAttr;
-use syn::{parse_quote, spanned::Spanned, Data, Expr, Field, Fields, Ident, Type};
+use syn::{parse_quote, spanned::Spanned, Expr, Field, Fields, Ident, Type, Variant};
 
-pub use structopt_parser::{rename_all as structopt_rename_all, StructOptTy};
+pub use structopt_parser::{
+    rename_all as structopt_rename_all, trim_structopt_default_value_attr, StructOptTy,
+};
+
+pub fn configopt_ident(ident: &Ident) -> Ident {
+    ident.prepend("ConfigOpt")
+}
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum CasingStyle {
@@ -38,7 +44,7 @@ impl FromStr for CasingStyle {
 }
 
 impl CasingStyle {
-    fn rename(&self, s: &str) -> String {
+    fn rename(self, s: &str) -> String {
         match self {
             CasingStyle::Kebab => s.to_kebab_case(),
             CasingStyle::Snake => s.to_snake_case(),
@@ -48,15 +54,6 @@ impl CasingStyle {
             CasingStyle::Verbatim => String::from(s),
         }
     }
-}
-
-/// Check if a field is annotated with #[configopt(nested)]
-pub fn has_configopt_nested_attr(field: &Field) -> bool {
-    proc_macro_roids::contains_tag(
-        &field.attrs,
-        &parse_quote!(configopt),
-        &parse_quote!(nested),
-    )
 }
 
 pub fn inner_ty(ty: &mut Type) -> &mut Ident {
@@ -78,17 +75,22 @@ pub fn inner_ty(ty: &mut Type) -> &mut Ident {
 
 pub struct ParsedField {
     ident: Ident,
-    ty: Type,
+    structopt_ty: StructOptTy,
+    configopt_inner_ty: Ident,
     span: Span,
-    nested: bool,
+    flatten: bool,
+    subcommand: bool,
     structopt_name: String,
     serde_name: String,
     to_default: Option<Expr>,
 }
 
 impl ParsedField {
-    fn new(field: &Field, structopt_rename: CasingStyle, serde_rename: CasingStyle) -> Self {
+    pub fn new(field: &Field, structopt_rename: CasingStyle, serde_rename: CasingStyle) -> Self {
         let ident = field.ident.clone().expect("field ident to exist");
+        let ty = &field.ty;
+        let mut_ty = &mut field.ty.clone();
+        let inner_ty = inner_ty(&mut mut_ty.clone()).clone();
         let structopt_attrs = structopt_parser::parse_attrs(&field.attrs);
         let configopt_attrs = configopt_parser::parse_attrs(&field.attrs);
 
@@ -104,11 +106,19 @@ impl ParsedField {
 
         Self {
             ident,
-            ty: field.ty.clone(),
+            structopt_ty: StructOptTy::from_syn_ty(&ty),
+            configopt_inner_ty: configopt_ident(&inner_ty),
             span: field.span(),
             structopt_name,
             serde_name,
-            nested: has_configopt_nested_attr(field),
+            flatten: structopt_attrs.iter().any(|a| match a {
+                StructOptAttr::Flatten => true,
+                _ => false,
+            }),
+            subcommand: structopt_attrs.iter().any(|a| match a {
+                StructOptAttr::Subcommand => true,
+                _ => false,
+            }),
             to_default: configopt_attrs.into_iter().find_map(|a| match a {
                 ConfigOptAttr::ToDefault(expr) => Some(expr),
                 _ => None,
@@ -116,44 +126,24 @@ impl ParsedField {
         }
     }
 
-    pub fn parse_fields(
-        data: &Data,
-        structopt_rename: CasingStyle,
-        serde_rename: CasingStyle,
-    ) -> Vec<ParsedField> {
-        match data {
-            Data::Struct(data) => match &data.fields {
-                Fields::Named(fields) => fields
-                    .named
-                    .iter()
-                    .map(|field| ParsedField::new(field, structopt_rename, serde_rename))
-                    .collect::<Vec<_>>(),
-                Fields::Unnamed(_) => panic!("`ConfigOpt` cannot be derived for unnamed struct"),
-                Fields::Unit => panic!("`ConfigOpt` cannot be derived for unit structs"),
-            },
-            Data::Enum(_) => panic!("`ConfigOpt` cannot be derived for enums"),
-            Data::Union(_) => panic!("`ConfigOpt` cannot be derived for unions"),
-        }
-    }
-
     pub fn ident(&self) -> &Ident {
         &self.ident
     }
 
-    pub fn ty(&self) -> &Type {
-        &self.ty
+    pub fn structopt_ty(&self) -> &StructOptTy {
+        &self.structopt_ty
     }
 
-    pub fn inner_ty(&self) -> Ident {
-        inner_ty(&mut self.ty.clone()).clone()
+    pub fn configopt_inner_ty(&self) -> &Ident {
+        &self.configopt_inner_ty
     }
 
-    pub fn partial_inner_ty(&self) -> Ident {
-        partial::partial_ident(&self.inner_ty())
+    pub fn flatten(&self) -> bool {
+        self.flatten
     }
 
-    pub fn nested(&self) -> bool {
-        self.nested
+    pub fn subcommand(&self) -> bool {
+        self.subcommand
     }
 
     pub fn structopt_name(&self) -> &str {
@@ -170,6 +160,57 @@ impl ParsedField {
 }
 
 impl Spanned for ParsedField {
+    fn span(&self) -> Span {
+        self.span
+    }
+}
+
+#[derive(Clone, Copy)]
+pub enum FieldType {
+    Named,
+    Unnamed,
+    Unit,
+}
+
+impl From<&Fields> for FieldType {
+    fn from(fields: &Fields) -> Self {
+        match fields {
+            Fields::Named(_) => Self::Named,
+            Fields::Unnamed(_) => Self::Unnamed,
+            Fields::Unit => Self::Unit,
+        }
+    }
+}
+
+pub struct ParsedVariant {
+    full_configopt_ident: TokenStream,
+    span: Span,
+    field_type: FieldType,
+}
+
+impl ParsedVariant {
+    pub fn new(type_ident: &Ident, variant: &Variant) -> Self {
+        let variant_ident = &variant.ident;
+        let configopt_type_ident = configopt_ident(&type_ident);
+        let full_configopt_ident = parse_quote! {#configopt_type_ident::#variant_ident};
+
+        Self {
+            full_configopt_ident,
+            span: variant.span(),
+            field_type: (&variant.fields).into(),
+        }
+    }
+
+    pub fn full_configopt_ident(&self) -> &TokenStream {
+        &self.full_configopt_ident
+    }
+
+    pub fn field_type(&self) -> FieldType {
+        self.field_type
+    }
+}
+
+impl Spanned for ParsedVariant {
     fn span(&self) -> Span {
         self.span
     }

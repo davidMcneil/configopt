@@ -1,416 +1,213 @@
-use configopt::{ConfigOpt, ConfigOptDefaults, TomlConfigGenerator};
-use serde::{Deserialize, Serialize};
-use serde_json;
-use std::{convert::TryFrom, ffi::OsString, path::PathBuf};
+use configopt::{configopt_fields, ConfigOpt, ConfigOptDefaults};
+use serde::Deserialize;
+use std::path::PathBuf;
 use structopt::StructOpt;
 
 const DEFAULT_VALUE: &str = "5";
+const MY_ENVAR: &str = "MY_ENVAR";
 
 #[test]
-fn test_simple_configopt_defaults() {
-    #[derive(ConfigOpt, StructOpt)]
-    #[structopt(rename_all = "pascal")]
+fn test_basic() {
+    #[configopt_fields]
+    #[derive(ConfigOpt, StructOpt, Debug, Deserialize)]
+    #[structopt(rename_all = "camelcase")]
+    #[configopt(derive(Debug), attrs(serde))]
+    #[serde(deny_unknown_fields)]
     struct MyStruct {
-        #[structopt(name = "a_new_name", default_value = DEFAULT_VALUE)]
-        this_is_an_arg: u64,
-        another_arg: String,
-        list_arg: Vec<String>,
-        optional_arg: Option<String>,
-    }
-
-    let mut partial = PartialMyStruct::default();
-    partial.this_is_an_arg = Some(12);
-    partial.another_arg = Some(String::from("test"));
-    assert_eq!(
-        partial.arg_default(&[String::from("a_new_name")]).unwrap(),
-        "12"
-    );
-    assert_eq!(
-        partial.arg_default(&[String::from("AnotherArg")]).unwrap(),
-        "test"
-    );
-    assert!(partial
-        .arg_default(&[String::from("another_arg")])
-        .is_none(),);
-}
-
-#[test]
-fn test_nested_configopt_defaults() {
-    fn path_buf_to_default(path_buf: &PathBuf) -> OsString {
-        path_buf.clone().into_os_string()
+        #[structopt(long)]
+        maybe: bool,
+        #[structopt(long)]
+        numbers: Vec<u32>,
+        #[structopt(long)]
+        optional: Option<String>,
+        #[structopt(long, env = MY_ENVAR, default_value = DEFAULT_VALUE)]
+        not_optional: String,
+        #[structopt(long)]
+        double_optional: Option<Option<f32>>,
+        #[structopt(long)]
+        optional_vec: Option<Vec<u32>>,
+        #[structopt(long)]
+        path: PathBuf,
+        #[structopt(long, default_value = "Some Default")]
+        name: String,
+        #[structopt(flatten)]
+        another: AnotherStruct,
+        #[structopt(subcommand)]
+        #[serde(skip)]
+        cmd: MyEnum,
     }
 
     #[derive(ConfigOpt, StructOpt, Debug)]
-    #[configopt(derive(Debug))]
-    #[structopt(rename_all = "screamingsnake")]
-    struct NestedStruct {
-        #[structopt(default_value = DEFAULT_VALUE)]
-        field1: u64,
-        field2: PathBuf,
-        field3: Option<PathBuf>,
-        field4: Vec<PathBuf>,
-        #[configopt(to_default = path_buf_to_default)]
-        field5: PathBuf,
-        #[configopt(to_default = path_buf_to_default)]
-        field6: Option<PathBuf>,
-        #[configopt(to_default = path_buf_to_default)]
-        field7: Vec<PathBuf>,
+    #[configopt(derive(Debug), attrs(serde))]
+    enum MyEnum {
+        Cmd1,
+        Cmd2 {
+            #[structopt(long)]
+            field_1: String,
+            #[structopt(long)]
+            field_2: Option<String>,
+        },
+        Cmd3(AnotherStruct),
     }
 
-    #[derive(ConfigOpt, StructOpt)]
-    #[structopt(rename_all = "pascal")]
-    struct MyStruct {
-        #[structopt(name = "a_new_name", default_value = DEFAULT_VALUE)]
-        this_is_an_arg: u64,
-        another_arg: String,
-        #[configopt(nested)]
-        #[structopt(flatten)]
-        nested: NestedStruct,
-    }
-
-    let mut partial = PartialMyStruct::default();
-    partial.this_is_an_arg = Some(12);
-    partial.another_arg = Some(String::from("test"));
-    partial.nested = Some(PartialNestedStruct {
-        field1: Some(4),
-        field2: None,
-        field3: None,
-        field4: Some(vec![
-            PathBuf::from("/test/path1"),
-            PathBuf::from("/test/path2"),
-        ]),
-        field5: None,
-        field6: None,
-        field7: None,
-    });
-    assert_eq!(
-        partial.arg_default(&[String::from("a_new_name")]).unwrap(),
-        "12"
-    );
-    assert_eq!(
-        partial.arg_default(&[String::from("AnotherArg")]).unwrap(),
-        "test"
-    );
-    assert_eq!(
-        partial
-            .arg_default(&[String::from("Nested"), String::from("FIELD_1")])
-            .unwrap(),
-        "4"
-    );
-    assert_eq!(
-        partial
-            .arg_default(&[String::from("Nested"), String::from("FIELD_4")])
-            .unwrap(),
-        "/test/path1,/test/path2"
-    );
-    assert!(partial
-        .arg_default(&[String::from("another_arg")])
-        .is_none(),);
-}
-
-#[test]
-fn test_simple() {
-    #[derive(ConfigOpt, Debug, PartialEq)]
-    #[configopt(partial_only, derive(PartialEq, Debug))]
-    struct MyStruct {
-        s: String,
-        u: u64,
-    };
-
-    let mut partial = PartialMyStruct::default();
-    assert_eq!(partial, PartialMyStruct { s: None, u: None });
-    assert!(partial.is_empty());
-    assert!(!partial.is_complete());
-
-    partial.s = Some(String::from("test"));
-    let mut partial2 = PartialMyStruct::default();
-    partial2.s = Some(String::from("another"));
-    partial2.u = Some(16);
-    partial.patch(&mut partial2);
-    assert!(!partial2.is_empty());
-    assert!(!partial.is_empty());
-    assert!(partial.is_complete());
-    assert_eq!(partial.s.as_ref().unwrap(), "test");
-
-    let mut partial2 = PartialMyStruct::default();
-    partial2.s = Some(String::from("test2"));
-    partial2.u = Some(162);
-    partial.take(&mut partial2);
-    assert!(partial2.is_empty());
-
-    let partial2 = PartialMyStruct::from(MyStruct {
-        s: String::from("test2"),
-        u: 162,
-    });
-    assert_eq!(partial2, partial);
-
-    let full = MyStruct::try_from(partial).expect("to convert");
-    assert_eq!(
-        full,
-        MyStruct {
-            s: String::from("test2"),
-            u: 162,
+    // TODO: Remove this
+    impl Default for MyEnum {
+        fn default() -> Self {
+            Self::Cmd1
         }
-    );
-}
+    }
 
-#[test]
-fn test_nested() {
-    #[derive(ConfigOpt, Debug, PartialEq, Default)]
-    #[configopt(partial_only, derive(PartialEq, Debug))]
-    struct AStruct {
-        a: String,
-        b: u64,
-    };
-
-    #[derive(ConfigOpt, Debug, PartialEq, Default)]
-    #[configopt(partial_only, derive(PartialEq, Debug))]
-    struct AnotherStruct {
-        #[configopt(nested)]
-        s: AStruct,
-    };
-
-    #[derive(Debug, PartialEq, Default)]
-    struct NotPartialStruct {
-        u: u64,
-    };
-
-    #[derive(ConfigOpt, Debug, PartialEq, Default)]
-    #[configopt(partial_only, derive(PartialEq, Debug))]
-    struct YetAnotherStruct {
-        not_partial: NotPartialStruct,
-        #[configopt(nested)]
-        another: AnotherStruct,
-    };
-
-    #[derive(ConfigOpt, Debug, PartialEq, Default)]
-    #[configopt(partial_only, derive(PartialEq, Debug))]
-    struct MyStruct {
-        field: String,
-        #[configopt(nested)]
-        another: AnotherStruct,
-        #[configopt(nested)]
-        yet_another: YetAnotherStruct,
-    };
-
-    let partial = PartialMyStruct::default();
-    let full = MyStruct::try_from(partial);
-    assert!(full.is_err());
-    let mut partial = full.unwrap_err();
-    let mut partial2 = PartialMyStruct::default();
-    partial2.another = Some(PartialAnotherStruct {
-        s: Some(PartialAStruct {
-            a: Some(String::from("test")),
-            b: None,
-        }),
-    });
-    partial.take(&mut partial2);
-    assert_eq!(
-        partial
-            .another
-            .as_ref()
-            .unwrap()
-            .s
-            .as_ref()
-            .unwrap()
-            .a
-            .as_ref()
-            .unwrap(),
-        "test"
-    );
-    assert!(partial2.is_empty());
-
-    let mut partial2 = PartialMyStruct::default();
-    partial2.another = Some(PartialAnotherStruct {
-        s: Some(PartialAStruct {
-            a: Some(String::from("test2")),
-            b: None,
-        }),
-    });
-    partial.take(&mut partial2);
-    assert_eq!(
-        partial
-            .another
-            .as_ref()
-            .unwrap()
-            .s
-            .as_ref()
-            .unwrap()
-            .a
-            .as_ref()
-            .unwrap(),
-        "test2"
-    );
-    assert!(partial2.is_empty());
-
-    let mut partial3 = PartialMyStruct::default();
-    partial3.another = Some(PartialAnotherStruct {
-        s: Some(PartialAStruct {
-            a: Some(String::from("test3")),
-            b: Some(15),
-        }),
-    });
-    partial.patch(&mut partial3);
-    assert_eq!(
-        partial
-            .another
-            .as_ref()
-            .unwrap()
-            .s
-            .as_ref()
-            .unwrap()
-            .a
-            .as_ref()
-            .unwrap(),
-        "test2"
-    );
-    assert_eq!(
-        *partial
-            .another
-            .as_ref()
-            .unwrap()
-            .s
-            .as_ref()
-            .unwrap()
-            .b
-            .as_ref()
-            .unwrap(),
-        15
-    );
-
-    let mut full = MyStruct::default();
-    partial.merge(&mut full);
-    assert_eq!(full.another.s.a, "test2");
-    assert_eq!(full.another.s.b, 15);
-}
-
-#[test]
-fn test_serde_structopt() {
-    #[derive(ConfigOpt, Debug, PartialEq, StructOpt, Deserialize, Serialize)]
-    #[configopt(derive(PartialEq, Debug, Deserialize, Serialize), attrs(serde))]
+    #[configopt_fields]
+    #[derive(ConfigOpt, StructOpt, Debug, Deserialize)]
+    #[configopt(derive(Debug), attrs(serde))]
     #[serde(deny_unknown_fields)]
-    struct MyStruct {
-        /// This is arg1
-        #[structopt(long = "arg1", default_value = "arg1")]
-        #[serde(rename = "arg1")]
-        s: String,
-        /// This is arg2
-        #[structopt(long = "arg2", default_value = "2")]
-        #[serde(rename = "arg2")]
-        u: u64,
-    };
+    struct AnotherStruct {
+        #[structopt(long)]
+        field_a: String,
+        #[structopt(long)]
+        #[serde(skip)]
+        field_b: Option<String>,
+    }
 
-    let data = r#"
-    {
-        "arg1": "Test",
-        "arg2": 42
-    }"#;
-    let partial: PartialMyStruct = serde_json::from_str(data).expect("to parse");
-    let full = MyStruct::try_from(partial).expect("to convert");
-    assert_eq!(
-        MyStruct {
-            s: String::from("Test"),
-            u: 42
-        },
-        full
-    );
+    assert!(ConfigOptMyStruct::from_iter_safe(&["test"]).is_ok());
+    assert!(ConfigOptMyStruct::from_iter_safe(&["test", "--numbers", "1", "2", "5"]).is_ok());
+    assert!(ConfigOptMyStruct::from_iter_safe(&["test", "cmd3"]).is_ok());
+    assert!(ConfigOptMyStruct::from_iter_safe(&["test", "cmd3", "--field-a=test"]).is_ok());
+    assert!(ConfigOptMyStruct::from_iter_safe(&["test", "--generate-config"]).is_ok());
+    assert!(ConfigOptMyStruct::from_iter_safe(&["test", "cmd3", "--generate-config"]).is_ok());
+    assert!(ConfigOptMyStruct::from_iter_safe(&[
+        "test",
+        "--generate-config",
+        "cmd3",
+        "--generate-config"
+    ])
+    .is_ok());
 
-    let data = r#"
-    {
-        "arg1": "Test"
-    }"#;
-    let partial: PartialMyStruct = serde_json::from_str(data).expect("to parse");
-    assert_eq!(
-        PartialMyStruct {
-            s: Some(String::from("Test")),
-            u: None
-        },
-        partial
-    );
+    assert!(toml::from_str::<ConfigOptAnotherStruct>("").is_ok());
+    // assert!(ConfigOptAnotherStruct::from_args_safe_ignore_help().is_ok());
 
-    let data = r#"
-    {
-        "unknown": "field",
-        "arg1": "Test"
-    }"#;
-    assert!(serde_json::from_str::<PartialMyStruct>(data).is_err());
+    let defaults = ConfigOptMyEnum::from_iter_safe(&["test", "cmd3", "--field-a=test"]).unwrap();
+    defaults.arg_default(&[String::from("cmd3"), String::from("field_a")]);
+    assert!(MyEnum::from_iter_safe_with_defaults(
+        &["test", "cmd3", "--field-b=another"],
+        &defaults
+    )
+    .is_ok());
 }
 
-#[test]
-fn test_toml_config_generator() {
-    #[derive(ConfigOpt, Debug, PartialEq, StructOpt)]
-    #[configopt(derive(PartialEq, Debug), attrs(serde))]
-    struct NestedStruct {
-        /// The first test arg
-        ///
-        /// A nested arg
-        #[structopt(long)]
-        test_1: String,
-        /// The second test arg
-        #[structopt(long)]
-        test_2: Option<u64>,
-    };
+// #[test]
+// fn test_simple_configopt_defaults() {
+// #[derive(StructOpt, Deserialize, Debug, Serialize)]
+// // #[serde(deny_unknown_fields)]
+// struct MakeCookie {
+//     #[structopt(name = "supervisor", default_value = "Puck", long = "supervisor")]
+//     supervising_faerie: String,
+//     /// The faerie tree this cookie is being made in.
+//     tree: Option<String>,
+//     #[structopt(subcommand)] // Note that we mark a field as a subcommand
+//     cmd: Command,
+// }
 
-    #[derive(ConfigOpt, Debug, PartialEq, StructOpt)]
-    #[configopt(derive(PartialEq, Debug), attrs(serde))]
-    struct MyStruct {
-        /// This is arg1
-        ///
-        /// This is the start of the long comment.
-        /// A long long long long long long long long long long long long long long long line
-        /// and yet another line
-        ///
-        /// What! even another line.
-        ///
-        #[structopt(long = "arg1", default_value = "arg1")]
-        s: String,
-        /// This is arg2
-        #[structopt(long = "arg2", default_value = "2")]
-        u: u64,
-        #[structopt(long = "vec")]
-        v: Vec<i32>,
-        #[structopt(flatten)]
-        #[configopt(nested)]
-        nested: NestedStruct,
-        /// This is a float
-        #[structopt(short)]
-        more: f32,
-    };
+// #[derive(StructOpt, Deserialize, Debug, Serialize)]
+// enum Command {
+//     /// Pound acorns into flour for cookie dough.
+//     Pound {
+//         acorns: u32,
+//     },
+//     /// Add magical sparkles -- the secret ingredient!
+//     Sparkle {
+//         #[structopt(short)]
+//         magicality: u64,
+//         #[structopt(short)]
+//         color: String,
+//     },
+//     Finish(Finish),
+// }
 
-    let mut s = PartialMyStruct::default();
-    s.s = Some(String::from("test"));
-    s.v = Some(vec![1, 2, 3]);
-    let mut n = PartialNestedStruct::default();
-    n.test_1 = Some(String::from("test"));
-    s.nested = Some(n);
+// // Subcommand can also be externalized by using a 1-uple enum variant
+// #[derive(StructOpt, ConfigOpt, Deserialize, Debug, Serialize)]
+// // #[serde(deny_unknown_fields)]
+// struct Finish {
+//     #[structopt(short)]
+//     time: u32,
+//     #[structopt(subcommand)] // Note that we mark a field as a subcommand
+//     finish_type: FinishType,
+// }
 
-    let config = s.toml_config();
-    assert!(toml::from_str::<toml::Value>(&config).is_ok());
-    println!("{}", config);
-    let expected = r###"# This is arg1
-# 
-# This is the start of the long comment. A long long long long long long long long long long long long long long long line and yet another line
-# 
-# What! even another line.
-s = "test"
+// // subsubcommand!
+// #[derive(StructOpt, Deserialize, Debug, Serialize)]
+// enum FinishType {
+//     Glaze { applications: u32 },
+//     Powder { flavor: String, dips: u32 },
+// }
 
-# This is arg2
-## u =
+//     #[derive(StructOpt, Deserialize, Debug, Serialize)]
+//     // #[serde(deny_unknown_fields)]
+//     struct ConfigOptMakeCookie {
+//         #[structopt(name = "supervisor", long = "supervisor")]
+//         supervising_faerie: Option<String>,
+//         /// The faerie tree this cookie is being made in.
+//         tree: Option<String>,
+//         #[structopt(subcommand)] // Note that we mark a field as a subcommand
+//         cmd: Option<ConfigOptCommand>,
+//     }
 
-v = [1, 2, 3]
+//     #[derive(StructOpt, Deserialize, Debug, Serialize)]
+//     enum ConfigOptCommand {
+//         /// Pound acorns into flour for cookie dough.
+//         Pound {
+//             acorns: Option<u32>,
+//         },
+//         /// Add magical sparkles -- the secret ingredient!
+//         Sparkle {
+//             #[structopt(short)]
+//             magicality: Option<u64>,
+//             #[structopt(short)]
+//             color: Option<String>,
+//         },
+//         Finish(ConfigOptFinish),
+//     }
 
-# The first test arg
-# 
-# A nested arg
-nested.test_1 = "test"
+//     // Subcommand can also be externalized by using a 1-uple enum variant
+//     #[derive(StructOpt, Deserialize, Debug, Serialize)]
+//     // #[serde(deny_unknown_fields)]
+//     struct ConfigOptFinish {
+//         #[structopt(short)]
+//         time: Option<u32>,
+//         #[structopt(subcommand)] // Note that we mark a field as a subcommand
+//         finish_type: Option<ConfigOptFinishType>,
+//     }
 
-# The second test arg
-## nested.test_2 =
+//     // subsubcommand!
+//     #[derive(StructOpt, Deserialize, Debug, Serialize)]
+//     enum ConfigOptFinishType {
+//         Glaze {
+//             applications: Option<u32>,
+//         },
+//         Powder {
+//             flavor: Option<String>,
+//             dips: Option<u32>,
+//         },
+//     }
 
-# This is a float
-## more =
+//     let app = ConfigOptMakeCookie::from_iter_safe(&[""]).unwrap();
+//     println!("{:?}", app);
+//     let app = ConfigOptMakeCookie::from_iter_safe(&["", "pound"]).unwrap();
+//     println!("{:?}", app);
+//     let app = ConfigOptMakeCookie::from_iter_safe(&["", "finish", "glaze"]).unwrap();
+//     println!("{:?}", app);
 
-"###;
-    println!("{}", expected);
-    assert_eq!(config, expected);
-}
+//     let s = r###""###;
+//     let app: ConfigOptMakeCookie = toml::from_str(s).unwrap();
+//     println!("{:?}", app);
+//     let s = r###"
+// supervising_faerie = "Henry"
+// cmd.Pound.acorns = 42
+//     "###;
+//     let app: ConfigOptMakeCookie = toml::from_str(s).unwrap();
+//     println!("{:?}", app);
+
+//     let app = ConfigOptMakeCookie::from_iter_safe(&["", "pound", "53"]).unwrap();
+//     println!("{:?}", app);
+//     println!("{}", serde_json::to_string_pretty(&app).unwrap());
+// }

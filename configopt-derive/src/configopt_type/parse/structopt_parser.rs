@@ -1,4 +1,6 @@
 use super::CasingStyle;
+use proc_macro2::TokenStream;
+use quote::quote;
 use syn::{
     parenthesized,
     parse::{Parse, ParseStream},
@@ -12,6 +14,8 @@ use syn::{
 pub enum StructOptAttr {
     RenameAll(CasingStyle),
     NameLitStr(String),
+    Flatten,
+    Subcommand,
     // We only care about some of the structopt attributes
     Unknown,
 }
@@ -57,7 +61,11 @@ impl Parse for StructOptAttr {
             Ok(StructOptAttr::Unknown)
         } else {
             // Attributes represented with a sole identifier.
-            Ok(StructOptAttr::Unknown)
+            Ok(match name_str.as_ref() {
+                "flatten" => StructOptAttr::Flatten,
+                "subcommand" => StructOptAttr::Subcommand,
+                _ => StructOptAttr::Unknown,
+            })
         }
     }
 }
@@ -71,6 +79,84 @@ pub fn parse_attrs(attrs: &[Attribute]) -> Vec<StructOptAttr> {
                 .expect("`configopt` failed to parse `structopt` attributes")
         })
         .collect()
+}
+
+struct TrimDefaultValueAttribute(Option<TokenStream>);
+
+impl Parse for TrimDefaultValueAttribute {
+    fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
+        // let name: Ident = input.parse()?;
+        Ok(if false {
+            Self(None)
+        } else {
+            // This was not a `default_value` attribute so reassemble the TokenStream
+            let token_stream = input.parse::<TokenStream>()?;
+            // Self(Some(parse_quote! {#name#token_stream}))
+            Self(Some(token_stream))
+        })
+    }
+}
+
+fn trim_default_value_attr_parse(input: ParseStream) -> syn::Result<TokenStream> {
+    let name: Ident = input.parse()?;
+    let name_str = name.to_string();
+
+    Ok(if input.peek(Token![=]) {
+        // `name = value` attributes.
+        input.parse::<Token![=]>()?; // skip '='
+
+        let token_stream = if input.peek(LitStr) {
+            let lit: LitStr = input.parse()?;
+            quote! {#lit}
+        } else {
+            match input.parse::<Expr>() {
+                Ok(expr) => {
+                    quote! {#expr}
+                }
+                Err(e) => {
+                    panic!("`configopt` parsing `structopt` expected `string literal` or `expression` after `=`, err: {}", e)
+                }
+            }
+        };
+        match name_str.as_ref() {
+            "default_value" | "required" => quote! {},
+            _ => quote! {#name = #token_stream},
+        }
+    } else if input.peek(syn::token::Paren) {
+        // `name(...)` attributes.
+        let nested;
+        parenthesized!(nested in input);
+        let token_stream: TokenStream = nested.parse()?;
+        quote! {#name(#token_stream)}
+    } else {
+        // Attributes represented with a sole identifier.
+        match name_str.as_ref() {
+            "default_value" | "required" => quote! {},
+            _ => quote! {#name},
+        }
+    })
+}
+
+fn trim_default_value_attrs_parse(
+    input: ParseStream,
+) -> syn::Result<Punctuated<TokenStream, Token![,]>> {
+    Ok(input
+        .parse_terminated::<_, Token![,]>(trim_default_value_attr_parse)?
+        .into_iter()
+        .filter(|p| !p.is_empty())
+        .collect())
+}
+
+/// Default values do not make sense for any fields of the fully optional `ConfigOpt` so we trim
+/// them off
+pub fn trim_structopt_default_value_attr(attr: &mut Attribute) {
+    if !attr.path.is_ident("structopt") {
+        return;
+    }
+    let tokens = attr
+        .parse_args_with(trim_default_value_attrs_parse)
+        .expect("`ConfigOpt` failed to trim `structopt::default_value` attributes");
+    attr.tokens = quote! {(#tokens)};
 }
 
 pub fn rename_all(attrs: &[Attribute]) -> Option<CasingStyle> {

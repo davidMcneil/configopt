@@ -1,25 +1,36 @@
 {
     "cSpell.words": [
+        "ENVAR",
+        "Paren",
         "Populator",
         "argmatches",
+        "camelcase",
         "clippy",
+        "configfile",
+        "configfiles",
         "configopt",
         "configopts",
         "hacky",
         "idents",
         "inflector",
+        "kebabcase",
+        "pascalcase",
         "peekable",
         "positionals",
         "prepend",
         "recurse",
         "roids",
+        "screamingsnake",
+        "screamingsnakecase",
         "serde's",
+        "snakecase",
         "structopt",
         "structopt's",
         "structs",
         "subcommand",
         "subcommands",
         "subty",
-        "unsync"
+        "unsync",
+        "verbatimcase"
     ]
 }

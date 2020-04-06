@@ -4,12 +4,14 @@ mod configopt_defaults_trait;
 use arena_trait::Arena;
 use colosseum::{sync::Arena as SyncArena, unsync::Arena as UnsyncArena};
 use lazy_static::lazy_static;
-use std::io::Write;
-use std::{env, ffi::OsString, io, process};
-use structopt::{clap::App, StructOpt};
+use std::{env, ffi::OsString};
+use structopt::{
+    clap::{App, Result as ClapResult},
+    StructOpt,
+};
 
 pub use configopt_defaults_trait::ConfigOptDefaults;
-pub use configopt_derive::ConfigOpt;
+pub use configopt_derive::{configopt_fields, ConfigOpt};
 
 lazy_static! {
     static ref DEFAULT_VALUE_STORE: SyncArena<OsString> = SyncArena::new();
@@ -63,12 +65,6 @@ pub trait TomlConfigGenerator {
     }
 
     fn toml_config_with_prefix(&self, serde_prefix: &[String]) -> String;
-
-    fn write_toml_config_and_exit(&self, code: i32) {
-        let out = io::stdout();
-        writeln!(&mut out.lock(), "{}", self.toml_config()).expect("Error writing Error to stdout");
-        process::exit(code);
-    }
 }
 
 /// TODO
@@ -78,6 +74,24 @@ pub trait ConfigOpt: Sized + StructOpt {
     /// Construct an instance of a `structopt` struct using a set of defaults
     fn from_args_with_defaults(defaults: &impl ConfigOptDefaults) -> Self {
         from_args_with_defaults(defaults)
+    }
+
+    /// TODO
+    fn from_iter_safe_with_defaults<I>(
+        iter: I,
+        defaults: &impl ConfigOptDefaults,
+    ) -> ClapResult<Self>
+    where
+        I: IntoIterator,
+        I::Item: Into<OsString> + Clone,
+    {
+        from_iter_safe_with_defaults(iter, defaults)
+    }
+
+    /// TODO
+    fn from_args_safe_ignore_help() -> ClapResult<Self> {
+        let args = env::args().filter(|a| a != "-h" && a != "--help");
+        Self::from_iter_safe(args)
     }
 }
 
@@ -99,4 +113,24 @@ pub fn from_args_with_defaults<T: StructOpt>(defaults: &impl ConfigOptDefaults) 
 
     let matches = app.get_matches();
     T::from_clap(&matches)
+}
+
+/// Construct an instance of a `structopt` struct using a set of defaults
+pub fn from_iter_safe_with_defaults<I, T: StructOpt>(
+    iter: I,
+    defaults: &impl ConfigOptDefaults,
+) -> ClapResult<T>
+where
+    I: IntoIterator,
+    I::Item: Into<OsString> + Clone,
+{
+    let mut app = T::clap();
+
+    // An arena allocator is used to extend the lifetimes of the default value strings.
+    let arena = UnsyncArena::new();
+    let mut arg_path = Vec::new();
+    set_defaults_impl(&mut app, &mut arg_path, defaults, &arena);
+
+    let matches = app.get_matches_from_safe(iter)?;
+    Ok(T::from_clap(&matches))
 }

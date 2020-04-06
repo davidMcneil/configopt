@@ -9,7 +9,7 @@ proc-macro = true
 
 [dependencies]
 Inflector = { version="0.11.4", default-features = false }
-syn = "1.0.14"
 proc-macro2 = "1.0.8"
 proc_macro_roids = "0.7.0"
 quote = "1.0.2"
+syn = "1.0.14"
