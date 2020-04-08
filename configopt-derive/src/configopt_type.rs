@@ -125,6 +125,7 @@ impl ConfigOptConstruct {
         let ident = self.ident();
         let other = parse_quote! {other};
         let configopt_ident = parse::configopt_ident(ident);
+        let configopt_ident_str = configopt_ident.to_string();
         match self {
             Self::Struct(_, parsed_fields) => {
                 let configopt_take = generate::core::take(&parsed_fields, &other);
@@ -144,7 +145,7 @@ impl ConfigOptConstruct {
                 );
                 let toml_config_generator_with_prefix =
                     generate::toml_config::for_struct(&parsed_fields);
-                let configopt_defaults_field_match_arms =
+                let configopt_defaults_field_match =
                     generate::configopt_defaults::for_struct(&parsed_fields);
                 quote! {
                     #lints
@@ -223,11 +224,9 @@ impl ConfigOptConstruct {
                     #lints
                     impl ::configopt::ConfigOptDefaults for #configopt_ident {
                         fn arg_default(&self, arg_path: &[String]) -> Option<::std::ffi::OsString> {
-                            if let Some((arg_name, arg_path)) = arg_path.split_first() {
-                                match arg_name.as_str() {
-                                    #configopt_defaults_field_match_arms
-                                    _ => None,
-                                }
+                            let previous_arg_path = arg_path;
+                            if let Some((arg_name, arg_path)) = previous_arg_path.split_first() {
+                                #configopt_defaults_field_match   
                             } else {
                                 None
                             }

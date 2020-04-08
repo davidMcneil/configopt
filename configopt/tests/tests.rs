@@ -1,6 +1,6 @@
 use configopt::{configopt_fields, ConfigOpt, ConfigOptDefaults};
 use serde::Deserialize;
-use std::path::PathBuf;
+use std::{ffi::OsString, path::PathBuf};
 use structopt::StructOpt;
 
 const DEFAULT_VALUE: &str = "5";
@@ -30,8 +30,6 @@ fn test_basic() {
         path: PathBuf,
         #[structopt(long, default_value = "Some Default")]
         name: String,
-        #[structopt(flatten)]
-        another: AnotherStruct,
         #[structopt(subcommand)]
         #[serde(skip)]
         cmd: MyEnum,
@@ -67,32 +65,61 @@ fn test_basic() {
         #[structopt(long)]
         #[serde(skip)]
         field_b: Option<String>,
+        #[structopt(flatten)]
+        #[serde(flatten)]
+        yet_another: YetAnotherStruct,
+    }
+
+    #[derive(ConfigOpt, StructOpt, Debug, Deserialize)]
+    #[configopt(derive(Debug), attrs(serde))]
+    #[serde(deny_unknown_fields)]
+    struct YetAnotherStruct {
+        #[structopt(long)]
+        flat_optional: Option<u32>,
+        #[structopt(long)]
+        #[serde(default)]
+        flat_maybe: bool,
+        #[structopt(long)]
+        #[serde(default)]
+        flat_numbers: Vec<u32>,
     }
 
     assert!(ConfigOptMyStruct::from_iter_safe(&["test"]).is_ok());
     assert!(ConfigOptMyStruct::from_iter_safe(&["test", "--numbers", "1", "2", "5"]).is_ok());
     assert!(ConfigOptMyStruct::from_iter_safe(&["test", "cmd3"]).is_ok());
     assert!(ConfigOptMyStruct::from_iter_safe(&["test", "cmd3", "--field-a=test"]).is_ok());
-    assert!(ConfigOptMyStruct::from_iter_safe(&["test", "--generate-config"]).is_ok());
+    assert!(ConfigOptMyStruct::from_iter_safe(&["test", "--generateConfig"]).is_ok());
     assert!(ConfigOptMyStruct::from_iter_safe(&["test", "cmd3", "--generate-config"]).is_ok());
     assert!(ConfigOptMyStruct::from_iter_safe(&[
         "test",
-        "--generate-config",
+        "--generateConfig",
         "cmd3",
         "--generate-config"
     ])
     .is_ok());
 
-    assert!(toml::from_str::<ConfigOptAnotherStruct>("").is_ok());
-    // assert!(ConfigOptAnotherStruct::from_args_safe_ignore_help().is_ok());
+    let mut defaults = ConfigOptMyEnum::from_iter_safe(&["test", "cmd3", "--field-a=test"]).unwrap();
+    let mut from_config = toml::from_str::<ConfigOptAnotherStruct>("flat_numbers = [7]\nflat_optional = 6").unwrap();
+    println!("{:?}", from_config);
+    assert_eq!(vec![7], from_config.yet_another.flat_numbers);
+    match &mut defaults {
+        ConfigOptMyEnum::Cmd3(s) => {
+            s.patch(&mut from_config);
+            assert_eq!(vec![7], s.yet_another.flat_numbers);
+        },
+        _ => {}
+    }
+    assert_eq!(Some(OsString::from("test")), defaults.arg_default(&[String::from("cmd3"), String::from("field-a")]));
+    assert_eq!(Some(OsString::from("7")), defaults.arg_default(&[String::from("cmd3"), String::from("flat-numbers")]));
+    println!("{:?}", defaults);
+    
 
-    let defaults = ConfigOptMyEnum::from_iter_safe(&["test", "cmd3", "--field-a=test"]).unwrap();
-    defaults.arg_default(&[String::from("cmd3"), String::from("field_a")]);
-    assert!(MyEnum::from_iter_safe_with_defaults(
+    let app = MyEnum::from_iter_safe_with_defaults(
         &["test", "cmd3", "--field-b=another"],
         &defaults
-    )
-    .is_ok());
+    ).unwrap();
+    println!("{:?}", app);
+
 }
 
 // #[test]

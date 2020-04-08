@@ -8,15 +8,14 @@ fn to_default(field: &ParsedField) -> TokenStream {
     let self_field = quote! {self.#field_ident};
     let span = field.span();
 
-    if field.subcommand() {
-        return quote_spanned! {span=>
-            None
-        };
+    if field.flatten() {
+        panic!("`to_default` does not make sense for a flattened field");
     }
 
-    if field.flatten() {
+    if field.subcommand() {
+        // TODO: actually handle subcommands
         return quote_spanned! {span=>
-            #self_field.arg_default(arg_path)
+            None
         };
     }
 
@@ -35,11 +34,16 @@ fn to_default(field: &ParsedField) -> TokenStream {
         let mut result = ::std::ffi::OsString::new();
         for (i, v) in vec.iter().enumerate() {
             if i != 0 {
-                result.push(",");
+                // TODO: configurable separator
+                result.push(" ");
             }
             result.push(&v);
         }
-        Some(result)
+        if result.is_empty() {
+            None
+        } else {
+            Some(result)
+        }
     };
     // Based on the type of the field convert it to a String. Everything is wrapped
     // in an Option because this is always run on a `ConfigOpt` type.
@@ -86,8 +90,8 @@ fn to_default(field: &ParsedField) -> TokenStream {
 }
 
 pub fn for_struct(fields: &[ParsedField]) -> TokenStream {
-    fields
-        .iter()
+    let not_flat_fields = fields.iter().filter(|f| !f.flatten());
+    let not_flat_fields = not_flat_fields
         .map(|field| {
             let arg_name = field.structopt_name();
             let to_default = to_default(field);
@@ -95,7 +99,29 @@ pub fn for_struct(fields: &[ParsedField]) -> TokenStream {
                 #arg_name => #to_default,
             }
         })
-        .collect()
+        .collect::<TokenStream>();
+    let flat_fields = fields.iter().filter(|f| f.flatten());
+    let flat_fields = flat_fields
+        .map(|field| {
+            let field_ident = field.ident();
+            let self_field = quote! {self.#field_ident};
+            quote! {
+                if let Some(default) = #self_field.arg_default(previous_arg_path) {
+                    return Some(default);
+                }
+            }
+        })
+        .collect::<TokenStream>();
+    quote! {
+        match arg_name.as_str() {
+            #not_flat_fields
+            _ => {
+                // Try every flat field to see if we can get a match
+                #flat_fields
+                None
+            },
+        }
+    }
 }
 
 pub fn for_enum(variants: &[ParsedVariant]) -> TokenStream {

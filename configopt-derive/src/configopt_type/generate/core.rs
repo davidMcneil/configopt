@@ -63,7 +63,7 @@ pub fn patch(fields: &[ParsedField], other: &Ident) -> TokenStream {
                     },
                     StructOptTy::Vec => quote_spanned! {span=>
                         // TODO: Should it be wrapped in `Option`?
-                        if !#self_field.is_empty() {
+                        if #self_field.is_empty() {
                             ::std::mem::swap(&mut #self_field, &mut #other_field);
                         }
                     },
