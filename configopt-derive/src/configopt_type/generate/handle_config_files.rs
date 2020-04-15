@@ -3,11 +3,14 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use syn::Ident;
 
+fn has_configopt_fields(parsed: &[ParsedField]) -> bool {
+    parsed.iter().any(|f| f.ident() == "generate_config")
+}
+
 pub fn generate_for_struct(parsed: &[ParsedField]) -> TokenStream {
-    let has_config_fields = parsed.iter().any(|f| f.ident() == "generate_config");
+    let has_config_fields = has_configopt_fields(parsed);
     if has_config_fields {
         quote! {
-            // TODO: handle recursive subcommands
             if self.generate_config {
                 use ::std::io::Write;
                 use ::configopt::TomlConfigGenerator;
@@ -15,6 +18,7 @@ pub fn generate_for_struct(parsed: &[ParsedField]) -> TokenStream {
                 writeln!(&mut out.lock(), "{}", self.toml_config()).expect("Error writing Error to stdout");
                 ::std::process::exit(0);
             }
+            // TODO: handle recursive subcommands
         }
     } else {
         quote! {
@@ -24,19 +28,19 @@ pub fn generate_for_struct(parsed: &[ParsedField]) -> TokenStream {
 }
 
 pub fn patch_for_struct(parsed: &[ParsedField], configopt_ident: &Ident) -> TokenStream {
-    let has_config_fields = parsed.iter().any(|f| f.ident() == "generate_config");
+    let has_config_fields = has_configopt_fields(parsed);
     if has_config_fields {
         quote! {
             use ::std::convert::TryFrom;
-            // TODO: handle recursive subcommands
             let mut from_config_files = #configopt_ident::try_from(self.config_files.as_slice())?;
             self.patch(&mut from_config_files);
             Ok(self)
+            // TODO: handle recursive subcommands
         }
     } else {
         quote! {
-            // TODO: handle recursive subcommands
             Ok(self)
+            // TODO: handle recursive subcommands
         }
     }
 }

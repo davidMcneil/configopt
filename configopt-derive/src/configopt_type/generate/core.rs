@@ -59,7 +59,7 @@ pub fn patch(fields: &[ParsedField], other: &Ident) -> TokenStream {
                 match field.structopt_ty() {
                     StructOptTy::Bool => quote_spanned! {span=>
                         // TODO: Should it be wrapped in `Option`?
-                        #self_field = #other_field;
+                        // #self_field = #other_field;
                     },
                     StructOptTy::Vec => quote_spanned! {span=>
                         // TODO: Should it be wrapped in `Option`?

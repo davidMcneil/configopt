@@ -97,29 +97,39 @@ fn test_basic() {
         "--generate-config"
     ])
     .is_ok());
+    println!(
+        "{:?}",
+        ConfigOptMyStruct::from_iter_safe(&["test", "--configFiles", "test1.txt", "test2.txt",])
+    );
+    assert!(ConfigOptMyStruct::from_iter_safe(&["test", "--configFiles=test1.txt",]).is_ok());
 
-    let mut defaults = ConfigOptMyEnum::from_iter_safe(&["test", "cmd3", "--field-a=test"]).unwrap();
-    let mut from_config = toml::from_str::<ConfigOptAnotherStruct>("flat_numbers = [7]\nflat_optional = 6").unwrap();
+    let mut defaults =
+        ConfigOptMyEnum::from_iter_safe(&["test", "cmd3", "--field-a=test"]).unwrap();
+    let mut from_config =
+        toml::from_str::<ConfigOptAnotherStruct>("flat_numbers = [7]\nflat_optional = 6").unwrap();
     println!("{:?}", from_config);
     assert_eq!(vec![7], from_config.yet_another.flat_numbers);
     match &mut defaults {
         ConfigOptMyEnum::Cmd3(s) => {
             s.patch(&mut from_config);
             assert_eq!(vec![7], s.yet_another.flat_numbers);
-        },
+        }
         _ => {}
     }
-    assert_eq!(Some(OsString::from("test")), defaults.arg_default(&[String::from("cmd3"), String::from("field-a")]));
-    assert_eq!(Some(OsString::from("7")), defaults.arg_default(&[String::from("cmd3"), String::from("flat-numbers")]));
+    assert_eq!(
+        Some(OsString::from("test")),
+        defaults.arg_default(&[String::from("cmd3"), String::from("field-a")])
+    );
+    assert_eq!(
+        Some(OsString::from("7")),
+        defaults.arg_default(&[String::from("cmd3"), String::from("flat-numbers")])
+    );
     println!("{:?}", defaults);
-    
 
-    let app = MyEnum::from_iter_safe_with_defaults(
-        &["test", "cmd3", "--field-b=another"],
-        &defaults
-    ).unwrap();
+    let app =
+        MyEnum::from_iter_safe_with_defaults(&["test", "cmd3", "--field-b=another"], &defaults)
+            .unwrap();
     println!("{:?}", app);
-
 }
 
 // #[test]

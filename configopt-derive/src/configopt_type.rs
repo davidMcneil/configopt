@@ -125,7 +125,6 @@ impl ConfigOptConstruct {
         let ident = self.ident();
         let other = parse_quote! {other};
         let configopt_ident = parse::configopt_ident(ident);
-        let configopt_ident_str = configopt_ident.to_string();
         match self {
             Self::Struct(_, parsed_fields) => {
                 let configopt_take = generate::core::take(&parsed_fields, &other);
@@ -136,9 +135,8 @@ impl ConfigOptConstruct {
                 // let configopt_is_complete = is_complete(&parsed_fields);
                 // let configopt_from = from(&parsed_fields);
                 // let configopt_try_from = try_from(&parsed_fields);
-                let handle_config_files_generate = generate::handle_config_files::generate_for_struct(
-                    parsed_fields.as_slice(),
-                );
+                let handle_config_files_generate =
+                    generate::handle_config_files::generate_for_struct(parsed_fields.as_slice());
                 let handle_config_files_patch = generate::handle_config_files::patch_for_struct(
                     parsed_fields.as_slice(),
                     &configopt_ident,
@@ -226,7 +224,7 @@ impl ConfigOptConstruct {
                         fn arg_default(&self, arg_path: &[String]) -> Option<::std::ffi::OsString> {
                             let previous_arg_path = arg_path;
                             if let Some((arg_name, arg_path)) = previous_arg_path.split_first() {
-                                #configopt_defaults_field_match   
+                                #configopt_defaults_field_match
                             } else {
                                 None
                             }
@@ -259,9 +257,11 @@ impl ConfigOptConstruct {
                 }
             }
             Self::Enum(_, parsed_variants) => {
-                let handle_config_files_generate = generate::handle_config_files::generate_for_enum(parsed_variants);
-                let handle_config_files_patch = generate::handle_config_files::patch_for_enum(parsed_variants);
-                let configopt_defaults_variant_match_arms =
+                let handle_config_files_generate =
+                    generate::handle_config_files::generate_for_enum(parsed_variants);
+                let handle_config_files_patch =
+                    generate::handle_config_files::patch_for_enum(parsed_variants);
+                let configopt_defaults_variant =
                     generate::configopt_defaults::for_enum(&parsed_variants);
                 quote! {
                     #lints
@@ -293,7 +293,7 @@ impl ConfigOptConstruct {
                     impl ::configopt::ConfigOptDefaults for #configopt_ident {
                         fn arg_default(&self, arg_path: &[String]) -> Option<::std::ffi::OsString> {
                             match self {
-                                #configopt_defaults_variant_match_arms
+                                #configopt_defaults_variant
                                 _ => None,
                             }
                         }

@@ -8,7 +8,7 @@ edition = "2018"
 colosseum = "0.2.2"
 configopt-derive = { path = "../configopt-derive", version = "=0.1.0" }
 lazy_static = "1.4.0"
-structopt = "0.3.7"
+structopt = { git = "https://github.com/davidMcneil/structopt.git" }
 serde = { version = "1.0.104", features = ["derive"] }
 
 [dev-dependencies]
