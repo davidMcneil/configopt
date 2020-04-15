@@ -39,9 +39,9 @@ pub fn configopt_fields(
         #[serde(skip)]
         config_files: Vec<::std::path::PathBuf>,
         /// Generate a TOML config
-        #[structopt(long)]
+        #[structopt(long, default_value = "true")]
         #[serde(skip)]
-        generate_config: bool,
+        generate_config: Option<bool>,
     });
     ast.append_named(additional_fields);
 

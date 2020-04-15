@@ -50,12 +50,6 @@ fn to_default(field: &ParsedField) -> TokenStream {
     //
     // Once Rust has specialization this can be significantly simplified.
     match field.structopt_ty() {
-        StructOptTy::Bool => quote_spanned! {span=>
-            {
-                let value = #self_field;
-                #to_default
-            }
-        },
         StructOptTy::Vec => quote_spanned! {span=>
             {
                 let vec = #self_field.iter()
@@ -65,7 +59,7 @@ fn to_default(field: &ParsedField) -> TokenStream {
                 #join_os_str_vec
             }
         },
-        StructOptTy::Option | StructOptTy::Other => quote_spanned! {span=>
+        StructOptTy::Bool| StructOptTy::Option | StructOptTy::Other => quote_spanned! {span=>
             #self_field
                 .as_ref()
                 .and_then(|value| #to_default)

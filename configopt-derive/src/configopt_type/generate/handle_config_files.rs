@@ -11,7 +11,7 @@ pub fn generate_for_struct(parsed: &[ParsedField]) -> TokenStream {
     let has_config_fields = has_configopt_fields(parsed);
     if has_config_fields {
         quote! {
-            if self.generate_config {
+            if self.generate_config.unwrap_or_default() {
                 use ::std::io::Write;
                 use ::configopt::TomlConfigGenerator;
                 let out = ::std::io::stdout();

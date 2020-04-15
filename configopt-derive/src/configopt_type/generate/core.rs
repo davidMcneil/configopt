@@ -17,17 +17,13 @@ pub fn take(fields: &[ParsedField], other: &Ident) -> TokenStream {
                 }
             } else {
                 match field.structopt_ty() {
-                    StructOptTy::Bool => quote_spanned! {span=>
-                        // TODO: Should it be wrapped in `Option`?
-                        #self_field = #other_field;
-                    },
                     StructOptTy::Vec => quote_spanned! {span=>
                         // TODO: Should it be wrapped in `Option`?
                         if !#other_field.is_empty() {
                             ::std::mem::swap(&mut #self_field, &mut #other_field);
                         }
                     },
-                    StructOptTy::Option
+                    StructOptTy::Bool | StructOptTy::Option
                     | StructOptTy::OptionOption
                     | StructOptTy::OptionVec
                     | StructOptTy::Other => {
@@ -57,17 +53,13 @@ pub fn patch(fields: &[ParsedField], other: &Ident) -> TokenStream {
                 }
             } else {
                 match field.structopt_ty() {
-                    StructOptTy::Bool => quote_spanned! {span=>
-                        // TODO: Should it be wrapped in `Option`?
-                        // #self_field = #other_field;
-                    },
                     StructOptTy::Vec => quote_spanned! {span=>
                         // TODO: Should it be wrapped in `Option`?
                         if #self_field.is_empty() {
                             ::std::mem::swap(&mut #self_field, &mut #other_field);
                         }
                     },
-                    StructOptTy::Option
+                    StructOptTy::Bool | StructOptTy::Option
                     | StructOptTy::OptionOption
                     | StructOptTy::OptionVec
                     | StructOptTy::Other => {
