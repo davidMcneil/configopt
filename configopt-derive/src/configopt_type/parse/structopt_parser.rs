@@ -97,7 +97,7 @@ impl Parse for TrimDefaultValueAttribute {
     }
 }
 
-fn trim_default_value_attr_parse(input: ParseStream) -> syn::Result<TokenStream> {
+fn trim_required_attr(input: ParseStream) -> syn::Result<TokenStream> {
     let name: Ident = input.parse()?;
     let name_str = name.to_string();
 
@@ -119,7 +119,7 @@ fn trim_default_value_attr_parse(input: ParseStream) -> syn::Result<TokenStream>
             }
         };
         match name_str.as_ref() {
-            "default_value" | "required" => quote! {},
+            "required" => quote! {},
             _ => quote! {#name = #token_stream},
         }
     } else if input.peek(syn::token::Paren) {
@@ -131,17 +131,15 @@ fn trim_default_value_attr_parse(input: ParseStream) -> syn::Result<TokenStream>
     } else {
         // Attributes represented with a sole identifier.
         match name_str.as_ref() {
-            "default_value" | "required" => quote! {},
+            "required" => quote! {},
             _ => quote! {#name},
         }
     })
 }
 
-fn trim_default_value_attrs_parse(
-    input: ParseStream,
-) -> syn::Result<Punctuated<TokenStream, Token![,]>> {
+fn trim_required_attrs(input: ParseStream) -> syn::Result<Punctuated<TokenStream, Token![,]>> {
     Ok(input
-        .parse_terminated::<_, Token![,]>(trim_default_value_attr_parse)?
+        .parse_terminated::<_, Token![,]>(trim_required_attr)?
         .into_iter()
         .filter(|p| !p.is_empty())
         .collect())
@@ -149,12 +147,12 @@ fn trim_default_value_attrs_parse(
 
 /// Default values do not make sense for any fields of the fully optional `ConfigOpt` so we trim
 /// them off
-pub fn trim_structopt_default_value_attr(attr: &mut Attribute) {
+pub fn trim_structopt_required_attr(attr: &mut Attribute) {
     if !attr.path.is_ident("structopt") {
         return;
     }
     let tokens = attr
-        .parse_args_with(trim_default_value_attrs_parse)
+        .parse_args_with(trim_required_attrs)
         .expect("`ConfigOpt` failed to trim `structopt::default_value` attributes");
     attr.tokens = quote! {(#tokens)};
 }
