@@ -314,6 +314,9 @@ impl ConfigOptConstruct {
 // Only retain attributes we have explicitly opted to preserve
 fn retain_attrs(attrs: &mut Vec<Attribute>, retained_attrs: &[Ident]) {
     attrs.retain(|a| retained_attrs.iter().any(|i| a.path.is_ident(i)));
+    for attr in attrs {
+        parse::trim_structopt_default_value_attr(attr);
+    }
 }
 
 fn convert_and_parse_field(

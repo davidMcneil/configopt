@@ -10,7 +10,7 @@ use structopt_parser::StructOptAttr;
 use syn::{parse_quote, spanned::Spanned, Expr, Field, Fields, Ident, Type, Variant};
 
 pub use structopt_parser::{
-    rename_all as structopt_rename_all, StructOptTy,
+    rename_all as structopt_rename_all, trim_structopt_default_value_attr, StructOptTy,
 };
 
 pub fn configopt_ident(ident: &Ident) -> Ident {
