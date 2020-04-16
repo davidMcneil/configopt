@@ -67,13 +67,13 @@ fn test_basic() {
         field_b: Option<String>,
         #[structopt(flatten)]
         #[serde(flatten)]
-        yet_another: YetAnotherStruct,
+        flat_struct: FlatStruct,
     }
 
     #[derive(ConfigOpt, StructOpt, Debug, Deserialize)]
     #[configopt(derive(Debug), attrs(serde))]
     #[serde(deny_unknown_fields)]
-    struct YetAnotherStruct {
+    struct FlatStruct {
         #[structopt(long)]
         flat_optional: Option<u32>,
         #[structopt(long)]
@@ -97,10 +97,6 @@ fn test_basic() {
         "--generate-config"
     ])
     .is_ok());
-    println!(
-        "{:?}",
-        ConfigOptMyStruct::from_iter_safe(&["test", "--configFiles", "test1.txt", "test2.txt",])
-    );
     assert!(ConfigOptMyStruct::from_iter_safe(&["test", "--configFiles=test1.txt",]).is_ok());
 
     let mut defaults =
@@ -108,11 +104,11 @@ fn test_basic() {
     let mut from_config =
         toml::from_str::<ConfigOptAnotherStruct>("flat_numbers = [7]\nflat_optional = 6").unwrap();
     println!("{:?}", from_config);
-    assert_eq!(vec![7], from_config.yet_another.flat_numbers);
+    assert_eq!(vec![7], from_config.flat_struct.flat_numbers);
     match &mut defaults {
         ConfigOptMyEnum::Cmd3(s) => {
             s.patch(&mut from_config);
-            assert_eq!(vec![7], s.yet_another.flat_numbers);
+            assert_eq!(vec![7], s.flat_struct.flat_numbers);
         }
         _ => {}
     }
@@ -124,7 +120,6 @@ fn test_basic() {
         Some(OsString::from("7")),
         defaults.arg_default(&[String::from("cmd3"), String::from("flat-numbers")])
     );
-    println!("{:?}", defaults);
 
     let app =
         MyEnum::from_iter_safe_with_defaults(&["test", "cmd3", "--field-b=another"], &defaults)
