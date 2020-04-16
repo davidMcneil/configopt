@@ -341,6 +341,15 @@ fn convert_and_parse_field(
         if !parsed_field.flatten() {
             field.ty = parse_quote!(Option<#ty>);
         }
+        // If this field was a `bool` we need to add a default of `true` now that it is wrapped in
+        // an `Option`. This preserves the same behavior as if we just had a `bool`, but allows us
+        // to detect if the `bool` even has a value. Essentially, it adds a third state of not set
+        // (None) to this field.
+        if let StructOptTy::Bool = parsed_field.structopt_ty() {
+            field
+                .attrs
+                .push(parse_quote! {#[structopt(default_value = "true")]})
+        }
     }
 
     parsed_field

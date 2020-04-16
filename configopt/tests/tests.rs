@@ -103,7 +103,6 @@ fn test_basic() {
         ConfigOptMyEnum::from_iter_safe(&["test", "cmd3", "--field-a=test"]).unwrap();
     let mut from_config =
         toml::from_str::<ConfigOptAnotherStruct>("flat_numbers = [7]\nflat_optional = 6").unwrap();
-    println!("{:?}", from_config);
     assert_eq!(vec![7], from_config.flat_struct.flat_numbers);
     match &mut defaults {
         ConfigOptMyEnum::Cmd3(s) => {
@@ -121,125 +120,11 @@ fn test_basic() {
         defaults.arg_default(&[String::from("cmd3"), String::from("flat-numbers")])
     );
 
-    let app =
-        MyEnum::from_iter_safe_with_defaults(&["test", "cmd3", "--field-b=another"], &defaults)
-            .unwrap();
-    println!("{:?}", app);
+    assert!(MyEnum::from_iter_safe_with_defaults(
+        &["test", "cmd3", "--field-b=another"],
+        &defaults
+    )
+    .is_ok());
+
+    assert!(ConfigOptMyStruct::from_iter_safe(&["test", "--maybe", "cmd3"]).is_ok());
 }
-
-// #[test]
-// fn test_simple_configopt_defaults() {
-// #[derive(StructOpt, Deserialize, Debug, Serialize)]
-// // #[serde(deny_unknown_fields)]
-// struct MakeCookie {
-//     #[structopt(name = "supervisor", default_value = "Puck", long = "supervisor")]
-//     supervising_faerie: String,
-//     /// The faerie tree this cookie is being made in.
-//     tree: Option<String>,
-//     #[structopt(subcommand)] // Note that we mark a field as a subcommand
-//     cmd: Command,
-// }
-
-// #[derive(StructOpt, Deserialize, Debug, Serialize)]
-// enum Command {
-//     /// Pound acorns into flour for cookie dough.
-//     Pound {
-//         acorns: u32,
-//     },
-//     /// Add magical sparkles -- the secret ingredient!
-//     Sparkle {
-//         #[structopt(short)]
-//         magicality: u64,
-//         #[structopt(short)]
-//         color: String,
-//     },
-//     Finish(Finish),
-// }
-
-// // Subcommand can also be externalized by using a 1-uple enum variant
-// #[derive(StructOpt, ConfigOpt, Deserialize, Debug, Serialize)]
-// // #[serde(deny_unknown_fields)]
-// struct Finish {
-//     #[structopt(short)]
-//     time: u32,
-//     #[structopt(subcommand)] // Note that we mark a field as a subcommand
-//     finish_type: FinishType,
-// }
-
-// // subsubcommand!
-// #[derive(StructOpt, Deserialize, Debug, Serialize)]
-// enum FinishType {
-//     Glaze { applications: u32 },
-//     Powder { flavor: String, dips: u32 },
-// }
-
-//     #[derive(StructOpt, Deserialize, Debug, Serialize)]
-//     // #[serde(deny_unknown_fields)]
-//     struct ConfigOptMakeCookie {
-//         #[structopt(name = "supervisor", long = "supervisor")]
-//         supervising_faerie: Option<String>,
-//         /// The faerie tree this cookie is being made in.
-//         tree: Option<String>,
-//         #[structopt(subcommand)] // Note that we mark a field as a subcommand
-//         cmd: Option<ConfigOptCommand>,
-//     }
-
-//     #[derive(StructOpt, Deserialize, Debug, Serialize)]
-//     enum ConfigOptCommand {
-//         /// Pound acorns into flour for cookie dough.
-//         Pound {
-//             acorns: Option<u32>,
-//         },
-//         /// Add magical sparkles -- the secret ingredient!
-//         Sparkle {
-//             #[structopt(short)]
-//             magicality: Option<u64>,
-//             #[structopt(short)]
-//             color: Option<String>,
-//         },
-//         Finish(ConfigOptFinish),
-//     }
-
-//     // Subcommand can also be externalized by using a 1-uple enum variant
-//     #[derive(StructOpt, Deserialize, Debug, Serialize)]
-//     // #[serde(deny_unknown_fields)]
-//     struct ConfigOptFinish {
-//         #[structopt(short)]
-//         time: Option<u32>,
-//         #[structopt(subcommand)] // Note that we mark a field as a subcommand
-//         finish_type: Option<ConfigOptFinishType>,
-//     }
-
-//     // subsubcommand!
-//     #[derive(StructOpt, Deserialize, Debug, Serialize)]
-//     enum ConfigOptFinishType {
-//         Glaze {
-//             applications: Option<u32>,
-//         },
-//         Powder {
-//             flavor: Option<String>,
-//             dips: Option<u32>,
-//         },
-//     }
-
-//     let app = ConfigOptMakeCookie::from_iter_safe(&[""]).unwrap();
-//     println!("{:?}", app);
-//     let app = ConfigOptMakeCookie::from_iter_safe(&["", "pound"]).unwrap();
-//     println!("{:?}", app);
-//     let app = ConfigOptMakeCookie::from_iter_safe(&["", "finish", "glaze"]).unwrap();
-//     println!("{:?}", app);
-
-//     let s = r###""###;
-//     let app: ConfigOptMakeCookie = toml::from_str(s).unwrap();
-//     println!("{:?}", app);
-//     let s = r###"
-// supervising_faerie = "Henry"
-// cmd.Pound.acorns = 42
-//     "###;
-//     let app: ConfigOptMakeCookie = toml::from_str(s).unwrap();
-//     println!("{:?}", app);
-
-//     let app = ConfigOptMakeCookie::from_iter_safe(&["", "pound", "53"]).unwrap();
-//     println!("{:?}", app);
-//     println!("{}", serde_json::to_string_pretty(&app).unwrap());
-// }
