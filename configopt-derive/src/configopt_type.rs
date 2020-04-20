@@ -222,8 +222,8 @@ impl ConfigOptConstruct {
                     #lints
                     impl ::configopt::ConfigOptDefaults for #configopt_ident {
                         fn arg_default(&self, arg_path: &[String]) -> Option<::std::ffi::OsString> {
-                            let previous_arg_path = arg_path;
-                            if let Some((arg_name, arg_path)) = previous_arg_path.split_first() {
+                            let full_arg_path = arg_path;
+                            if let Some((arg_name, arg_path)) = full_arg_path.split_first() {
                                 #configopt_defaults_field_match
                             } else {
                                 None

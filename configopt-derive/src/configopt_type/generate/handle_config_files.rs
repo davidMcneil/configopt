@@ -29,18 +29,31 @@ pub fn generate_for_struct(parsed: &[ParsedField]) -> TokenStream {
 
 pub fn patch_for_struct(parsed: &[ParsedField], configopt_ident: &Ident) -> TokenStream {
     let has_config_fields = has_configopt_fields(parsed);
+    let patch_subcommands = parsed
+        .iter()
+        .filter(|f| f.subcommand())
+        .map(|field| {
+            let field_ident = field.ident();
+            let self_field = quote! {self.#field_ident};
+            quote! {
+                if let Some(s) = #self_field.as_mut() {
+                    s.patch_with_config_files()?;
+                }
+            }
+        })
+        .collect::<TokenStream>();
     if has_config_fields {
         quote! {
             use ::std::convert::TryFrom;
             let mut from_config_files = #configopt_ident::try_from(self.config_files.as_slice())?;
             self.patch(&mut from_config_files);
+            #patch_subcommands
             Ok(self)
-            // TODO: handle recursive subcommands
         }
     } else {
         quote! {
+            #patch_subcommands
             Ok(self)
-            // TODO: handle recursive subcommands
         }
     }
 }

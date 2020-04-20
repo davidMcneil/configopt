@@ -2,7 +2,7 @@ mod configopt_parser;
 mod structopt_parser;
 
 use configopt_parser::ConfigOptAttr;
-use inflector::Inflector;
+use heck::{CamelCase, KebabCase, MixedCase, ShoutySnakeCase, SnakeCase};
 use proc_macro2::{Span, TokenStream};
 use proc_macro_roids::IdentExt;
 use std::{convert::Infallible, str::FromStr};
@@ -48,9 +48,9 @@ impl CasingStyle {
         match self {
             CasingStyle::Kebab => s.to_kebab_case(),
             CasingStyle::Snake => s.to_snake_case(),
-            CasingStyle::ScreamingSnake => s.to_screaming_snake_case(),
-            CasingStyle::Camel => s.to_camel_case(),
-            CasingStyle::Pascal => s.to_pascal_case(),
+            CasingStyle::ScreamingSnake => s.to_shouty_snake_case(),
+            CasingStyle::Camel => s.to_mixed_case(),
+            CasingStyle::Pascal => s.to_camel_case(),
             CasingStyle::Verbatim => String::from(s),
         }
     }
@@ -186,6 +186,7 @@ pub struct ParsedVariant {
     full_configopt_ident: TokenStream,
     span: Span,
     field_type: FieldType,
+    structopt_name: String,
 }
 
 impl ParsedVariant {
@@ -198,6 +199,7 @@ impl ParsedVariant {
             full_configopt_ident,
             span: variant.span(),
             field_type: (&variant.fields).into(),
+            structopt_name: variant_ident.to_string().to_kebab_case(), // TODO
         }
     }
 
@@ -207,6 +209,10 @@ impl ParsedVariant {
 
     pub fn field_type(&self) -> FieldType {
         self.field_type
+    }
+
+    pub fn structopt_name(&self) -> &str {
+        &self.structopt_name
     }
 }
 

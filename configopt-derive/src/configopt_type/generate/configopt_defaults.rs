@@ -4,20 +4,17 @@ use quote::{quote, quote_spanned};
 use syn::spanned::Spanned;
 
 fn to_default(field: &ParsedField) -> TokenStream {
-    let field_ident = field.ident();
-    let self_field = quote! {self.#field_ident};
-    let span = field.span();
-
     if field.flatten() {
         panic!("`to_default` does not make sense for a flattened field");
     }
 
     if field.subcommand() {
-        // TODO: actually handle subcommands
-        return quote_spanned! {span=>
-            None
-        };
+        panic!("`to_default` does not make sense for a subcommand field");
     }
+
+    let field_ident = field.ident();
+    let self_field = quote! {self.#field_ident};
+    let span = field.span();
 
     // If this had a custom to_default use that otherwise use ConfigOptDefaults
     let to_default = if let Some(expr) = field.to_default() {
@@ -59,7 +56,7 @@ fn to_default(field: &ParsedField) -> TokenStream {
                 #join_os_str_vec
             }
         },
-        StructOptTy::Bool| StructOptTy::Option | StructOptTy::Other => quote_spanned! {span=>
+        StructOptTy::Bool | StructOptTy::Option | StructOptTy::Other => quote_spanned! {span=>
             #self_field
                 .as_ref()
                 .and_then(|value| #to_default)
@@ -84,10 +81,10 @@ fn to_default(field: &ParsedField) -> TokenStream {
 }
 
 pub fn for_struct(fields: &[ParsedField]) -> TokenStream {
-    let not_flat_fields = fields.iter().filter(|f| !f.flatten());
-    let not_flat_fields = not_flat_fields
+    let normal_fields = fields.iter().filter(|f| !f.flatten() && !f.subcommand());
+    let normal_fields = normal_fields
         .map(|field| {
-            let arg_name = field.structopt_name();
+            let arg_name = field.serde_name();
             let to_default = to_default(field);
             quote! {
                 #arg_name => #to_default,
@@ -100,15 +97,30 @@ pub fn for_struct(fields: &[ParsedField]) -> TokenStream {
             let field_ident = field.ident();
             let self_field = quote! {self.#field_ident};
             quote! {
-                if let Some(default) = #self_field.arg_default(previous_arg_path) {
+                if let Some(default) = #self_field.arg_default(full_arg_path) {
                     return Some(default);
+                }
+            }
+        })
+        .collect::<TokenStream>();
+    let subcommand_fields = fields.iter().filter(|f| f.subcommand());
+    let subcommand_fields = subcommand_fields
+        .map(|field| {
+            let field_ident = field.ident();
+            let self_field = quote! {self.#field_ident};
+            quote! {
+                "cmd3" => {
+                    #self_field
+                        .as_ref()
+                        .and_then(|value| value.arg_default(full_arg_path))
                 }
             }
         })
         .collect::<TokenStream>();
     quote! {
         match arg_name.as_str() {
-            #not_flat_fields
+            #normal_fields
+            #subcommand_fields
             _ => {
                 // Try every flat field to see if we can get a match
                 #flat_fields
@@ -124,15 +136,27 @@ pub fn for_enum(variants: &[ParsedVariant]) -> TokenStream {
         .map(|variant| {
             let full_configopt_ident = variant.full_configopt_ident();
             let span = variant.span();
+            let structopt_name = variant.structopt_name();
             // TODO: Handle other variants
-            if let FieldType::Unnamed = variant.field_type() {
-                quote_spanned! {span=>
-                    #full_configopt_ident(value) => {
-                        value.arg_default(&arg_path[1..])
+            match variant.field_type() {
+                FieldType::Unit => {
+                    quote_spanned! {span=>
+                        #full_configopt_ident => None,
                     }
                 }
-            } else {
-                quote! {}
+                FieldType::Unnamed => {
+                    quote_spanned! {span=>
+                        #full_configopt_ident(value) if #structopt_name == arg_path[0] => {
+                            value.arg_default(&arg_path[1..])
+                        }
+                    }
+                }
+                FieldType::Named => {
+                    quote_spanned! {span=>
+                        // TODO
+                        #full_configopt_ident{..} => None,
+                    }
+                }
             }
         })
         .collect()

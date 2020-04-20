@@ -3,13 +3,28 @@
 // use structopt::clap::{App, Arg, SubCommand};
 // use structopt::StructOpt;
 
-// #[configopt_fields]
-// #[derive(ConfigOpt, StructOpt, Debug, Deserialize)]
-// #[configopt(derive(Debug), attrs(serde))]
-// #[serde(deny_unknown_fields)]
+// fn bool_from_occurrences(occurrences: u64) -> Option<bool> {
+// if occurrences > 0 {
+//     true
+// } else {
+//     false
+// }
+// None
+// }
+
+// fn bool_from_flag(present: bool) -> Option<bool> {
+// if present {
+//     true
+// } else {
+//     false
+// }
+//     None
+// }
+
+// #[derive(StructOpt, Debug)]
 // struct MyStruct {
-//     #[structopt(long)]
-//     maybe: bool,
+//     #[structopt(long, default_value = "true", parse(from_occurrences = bool_from_occurrences))]
+//     maybe: Option<bool>,
 // }
 
 // #[derive(StructOpt, Debug)]
@@ -33,7 +48,8 @@
 // }
 
 fn main() {
-    // let app = MyStruct::clap();
+    // let app = MyStruct::from_args();
+    // println!("{:?}", app);
     // let m = app.get_matches_from_safe(&["", "--first", "cmd3"]).unwrap();
     // println!("{:?}", m.value_of("first"));
     // if let Some(m) = m.subcommand_matches("cmd3") {
