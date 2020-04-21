@@ -13,7 +13,6 @@ pub fn generate_for_struct(parsed: &[ParsedField]) -> TokenStream {
         quote! {
             if self.generate_config.unwrap_or_default() {
                 use ::std::io::Write;
-                use ::configopt::TomlConfigGenerator;
                 let out = ::std::io::stdout();
                 writeln!(&mut out.lock(), "{}", self.toml_config()).expect("Error writing Error to stdout");
                 ::std::process::exit(0);

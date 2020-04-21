@@ -129,7 +129,7 @@ impl ConfigOptConstruct {
             Self::Struct(_, parsed_fields) => {
                 let configopt_take = generate::core::take(&parsed_fields, &other);
                 let configopt_patch = generate::core::patch(&parsed_fields, &other);
-                // let configopt_merge = merge(&parsed_fields);
+                let configopt_take_for = generate::core::take_for(&parsed_fields, &other);
                 // let configopt_clear = clear(&parsed_fields);
                 // let configopt_is_empty = is_empty(&parsed_fields);
                 // let configopt_is_complete = is_complete(&parsed_fields);
@@ -158,10 +158,10 @@ impl ConfigOptConstruct {
                             #configopt_patch
                         }
 
-                    //     /// Take each field from `self` and set it in `other`
-                    //     pub fn merge(&mut self, other: &mut #ident) {
-                    //         #configopt_merge
-                    //     }
+                        /// Take each field from `self` and set it in `other`
+                        pub fn take_for(&mut self, other: &mut #ident) {
+                            #configopt_take_for
+                        }
 
                     //     /// Clear all fields from `self`
                     //     pub fn clear(&mut self) {
@@ -177,15 +177,6 @@ impl ConfigOptConstruct {
                     //     pub fn is_complete(&self) -> bool {
                     //         #configopt_is_complete
                     //     }
-
-                        pub fn maybe_generate_config_file_and_exit(&mut self) {
-                            #handle_config_files_generate
-                        }
-
-
-                        pub fn patch_with_config_files(&mut self) -> std::result::Result<&mut #configopt_ident, ::std::io::Error> {
-                            #handle_config_files_patch
-                        }
                     }
 
                     // #lints
@@ -202,34 +193,6 @@ impl ConfigOptConstruct {
                     //         #configopt_try_from
                     //     }
                     // }
-
-                    #lints
-                    impl ::configopt::ConfigOpt for #configopt_ident {}
-
-                    #lints
-                    impl ::configopt::ConfigOpt for #ident {}
-
-                    #lints
-                    impl ::configopt::TomlConfigGenerator for #configopt_ident {
-                        fn toml_config_with_prefix(&self, serde_prefix: &[String]) -> String {
-                            use ::structopt::StructOpt;
-
-                            let app = #ident::clap();
-                            #toml_config_generator_with_prefix
-                        }
-                    }
-
-                    #lints
-                    impl ::configopt::ConfigOptDefaults for #configopt_ident {
-                        fn arg_default(&self, arg_path: &[String]) -> Option<::std::ffi::OsString> {
-                            let full_arg_path = arg_path;
-                            if let Some((arg_name, arg_path)) = full_arg_path.split_first() {
-                                #configopt_defaults_field_match
-                            } else {
-                                None
-                            }
-                        }
-                    }
 
                     #lints
                     impl ::std::convert::TryFrom<&::std::path::Path> for #configopt_ident {
@@ -254,6 +217,43 @@ impl ConfigOptConstruct {
                             Ok(result)
                         }
                     }
+
+                    #lints
+                    impl ::configopt::ConfigOptDefaults for #configopt_ident {
+                        fn arg_default(&self, arg_path: &[String]) -> Option<::std::ffi::OsString> {
+                            let full_arg_path = arg_path;
+                            if let Some((arg_name, arg_path)) = full_arg_path.split_first() {
+                                #configopt_defaults_field_match
+                            } else {
+                                None
+                            }
+                        }
+                    }
+
+                    #lints
+                    impl ::configopt::ConfigOptType for #configopt_ident {
+                        fn maybe_generate_config_file_and_exit(&mut self) {
+                            #handle_config_files_generate
+                        }
+
+                        fn patch_with_config_files(&mut self) -> std::result::Result<&mut #configopt_ident, ::std::io::Error> {
+                            #handle_config_files_patch
+                        }
+
+                        fn toml_config_with_prefix(&self, serde_prefix: &[String]) -> String {
+                            let app = #ident::clap();
+                            #toml_config_generator_with_prefix
+                        }
+                    }
+
+                    #lints
+                    impl ::configopt::ConfigOpt for #ident {
+                        type ConfigOptType = #configopt_ident;
+
+                        fn take(&mut self, configopt: &mut Self::ConfigOptType) {
+                            configopt.take_for(self)
+                        }
+                    }
                 }
             }
             Self::Enum(_, parsed_variants) => {
@@ -265,31 +265,6 @@ impl ConfigOptConstruct {
                     generate::configopt_defaults::for_enum(&parsed_variants);
                 quote! {
                     #lints
-                    impl #configopt_ident {
-                        pub fn maybe_generate_config_file_and_exit(&mut self) {
-                            match self {
-                                #handle_config_files_generate
-                                _ => {}
-                            }
-                        }
-
-
-                        pub fn patch_with_config_files(&mut self) -> std::result::Result<&mut #configopt_ident, ::std::io::Error> {
-                            match self {
-                                #handle_config_files_patch
-                                _ => {}
-                            }
-                            Ok(self)
-                        }
-                    }
-
-                    #lints
-                    impl ::configopt::ConfigOpt for #configopt_ident {}
-
-                    #lints
-                    impl ::configopt::ConfigOpt for #ident {}
-
-                    #lints
                     impl ::configopt::ConfigOptDefaults for #configopt_ident {
                         fn arg_default(&self, arg_path: &[String]) -> Option<::std::ffi::OsString> {
                             match self {
@@ -298,6 +273,39 @@ impl ConfigOptConstruct {
                             }
                         }
                     }
+
+                    #lints
+                    impl ::configopt::ConfigOptType for #configopt_ident {
+                        fn maybe_generate_config_file_and_exit(&mut self) {
+                            match self {
+                                #handle_config_files_generate
+                                _ => {}
+                            }
+                        }
+
+
+                        fn patch_with_config_files(&mut self) -> std::result::Result<&mut #configopt_ident, ::std::io::Error> {
+                            match self {
+                                #handle_config_files_patch
+                                _ => {}
+                            }
+                            Ok(self)
+                        }
+
+                        fn toml_config_with_prefix(&self, serde_prefix: &[String]) -> String {
+                            todo!()
+                        }
+                    }
+
+                    #lints
+                    impl ::configopt::ConfigOpt for #ident {
+                        type ConfigOptType = #configopt_ident;
+
+                        fn take(&mut self, configopt: &mut Self::ConfigOptType) {
+                            todo!()
+                        }
+                    }
+
                 }
             }
         }

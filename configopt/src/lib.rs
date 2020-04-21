@@ -4,7 +4,7 @@ mod configopt_defaults_trait;
 use arena_trait::Arena;
 use colosseum::{sync::Arena as SyncArena, unsync::Arena as UnsyncArena};
 use lazy_static::lazy_static;
-use std::{env, ffi::OsString};
+use std::ffi::OsString;
 use structopt::{
     clap::{App, Result as ClapResult},
     StructOpt,
@@ -18,15 +18,14 @@ lazy_static! {
 }
 
 // This is very hacky. It reaches deep into clap internals to set the default values, but it works!
+// We need to set the defaults to prevent the CLI parsing from failing when a required argument is
+// not on the CLI but it is set in a config file.
 fn set_defaults_impl<'a>(
     app: &mut App<'_, 'a>,
     arg_path: &mut Vec<String>,
     defaults: &impl ConfigOptDefaults,
     arena: &'a impl Arena<OsString>,
 ) {
-    for _ in &app.p.flags {
-        // TODO: How to set the default of a flag
-    }
     for arg in &mut app.p.opts {
         arg_path.push(String::from(arg.b.name));
         if let Some(default) = defaults.arg_default(arg_path.as_slice()) {
@@ -49,52 +48,6 @@ fn set_defaults_impl<'a>(
     }
 }
 
-pub fn env_args_contains(s: &[&str]) -> bool {
-    for argument in env::args() {
-        if s.contains(&argument.as_str()) {
-            return true;
-        }
-    }
-    false
-}
-
-/// TODO
-pub trait TomlConfigGenerator {
-    fn toml_config(&self) -> String {
-        self.toml_config_with_prefix(&[])
-    }
-
-    fn toml_config_with_prefix(&self, serde_prefix: &[String]) -> String;
-}
-
-/// TODO
-/// --generate-config
-/// --config-file
-pub trait ConfigOpt: Sized + StructOpt {
-    /// Construct an instance of a `structopt` struct using a set of defaults
-    fn from_args_with_defaults(defaults: &impl ConfigOptDefaults) -> Self {
-        from_args_with_defaults(defaults)
-    }
-
-    /// TODO
-    fn from_iter_safe_with_defaults<I>(
-        iter: I,
-        defaults: &impl ConfigOptDefaults,
-    ) -> ClapResult<Self>
-    where
-        I: IntoIterator,
-        I::Item: Into<OsString> + Clone,
-    {
-        from_iter_safe_with_defaults(iter, defaults)
-    }
-
-    /// TODO
-    fn from_args_safe_ignore_help() -> ClapResult<Self> {
-        let args = env::args().filter(|a| a != "-h" && a != "--help");
-        Self::from_iter_safe(args)
-    }
-}
-
 /// Set the defaults for a `clap::App`
 pub fn set_defaults(app: &mut App<'_, 'static>, defaults: &impl ConfigOptDefaults) {
     let mut arg_path = Vec::new();
@@ -102,35 +55,92 @@ pub fn set_defaults(app: &mut App<'_, 'static>, defaults: &impl ConfigOptDefault
     set_defaults_impl(app, &mut arg_path, defaults, arena);
 }
 
-/// Construct an instance of a `structopt` struct using a set of defaults
-pub fn from_args_with_defaults<T: StructOpt>(defaults: &impl ConfigOptDefaults) -> T {
-    let mut app = T::clap();
+pub trait ConfigOptType: ConfigOptDefaults + StructOpt {
+    /// If the `--generate-config` flag is set output the current configuration to stdout and exit.
+    fn maybe_generate_config_file_and_exit(&mut self);
 
-    // An arena allocator is used to extend the lifetimes of the default value strings.
-    let arena = UnsyncArena::new();
-    let mut arg_path = Vec::new();
-    set_defaults_impl(&mut app, &mut arg_path, defaults, &arena);
+    /// Patch with values from the `--config-files` argument
+    fn patch_with_config_files(&mut self) -> std::result::Result<&mut Self, ::std::io::Error>;
 
-    let matches = app.get_matches();
-    T::from_clap(&matches)
+    fn toml_config_with_prefix(&self, serde_prefix: &[String]) -> String;
+
+    /// Generate TOML configuration.
+    fn toml_config(&self) -> String {
+        self.toml_config_with_prefix(&[])
+    }
 }
 
-/// Construct an instance of a `structopt` struct using a set of defaults
-pub fn from_iter_safe_with_defaults<I, T: StructOpt>(
-    iter: I,
-    defaults: &impl ConfigOptDefaults,
-) -> ClapResult<T>
-where
-    I: IntoIterator,
-    I::Item: Into<OsString> + Clone,
-{
-    let mut app = T::clap();
+pub trait ConfigOpt: Sized + StructOpt {
+    type ConfigOptType: ConfigOptType;
 
-    // An arena allocator is used to extend the lifetimes of the default value strings.
-    let arena = UnsyncArena::new();
-    let mut arg_path = Vec::new();
-    set_defaults_impl(&mut app, &mut arg_path, defaults, &arena);
+    /// Set default values. Then gets the struct from the command line arguments. Print the error
+    /// message and quit the program in case of failure.
+    fn from_args_with_defaults(defaults: &impl ConfigOptDefaults) -> Self {
+        let mut app = Self::clap();
+        // An arena allocator is used to extend the lifetimes of the default value strings.
+        let arena = UnsyncArena::new();
+        let mut arg_path = Vec::new();
+        set_defaults_impl(&mut app, &mut arg_path, defaults, &arena);
+        let matches = app.get_matches();
+        Self::from_clap(&matches)
+    }
 
-    let matches = app.get_matches_from_safe(iter)?;
-    Ok(T::from_clap(&matches))
+    /// Set default values. Then gets the struct from any iterator such as a Vec of your making.
+    /// Print the error message and quit the program in case of failure.
+    fn from_iter_with_defaults<I>(iter: I, defaults: &impl ConfigOptDefaults) -> Self
+    where
+        I: IntoIterator,
+        I::Item: Into<OsString> + Clone,
+    {
+        let mut app = Self::clap();
+        // An arena allocator is used to extend the lifetimes of the default value strings.
+        let arena = UnsyncArena::new();
+        let mut arg_path = Vec::new();
+        set_defaults_impl(&mut app, &mut arg_path, defaults, &arena);
+        let matches = app.get_matches_from(iter);
+        Self::from_clap(&matches)
+    }
+
+    /// Set default values. Then gets the struct from any iterator such as a Vec of your making.
+    ///
+    /// Returns a clap::Error in case of failure. This does not exit in the case of --help or
+    /// --version, to achieve the same behavior as from_iter() you must call .exit() on the error
+    /// value.
+    fn try_from_iter_with_defaults<I>(
+        iter: I,
+        defaults: &impl ConfigOptDefaults,
+    ) -> ClapResult<Self>
+    where
+        I: IntoIterator,
+        I::Item: Into<OsString> + Clone,
+    {
+        let mut app = Self::clap();
+        // An arena allocator is used to extend the lifetimes of the default value strings.
+        let arena = UnsyncArena::new();
+        let mut arg_path = Vec::new();
+        set_defaults_impl(&mut app, &mut arg_path, defaults, &arena);
+        let matches = app.get_matches_from_safe(iter)?;
+        Ok(Self::from_clap(&matches))
+    }
+
+    /// Gets the struct from the command line arguments taking into account `configopt` arguments.
+    /// Print the error message and quit the program in case of failure.
+    fn from_args() -> Self {
+        match Self::ConfigOptType::from_iter_safe(::std::env::args()) {
+            Ok(mut configopt) => {
+                configopt.maybe_generate_config_file_and_exit();
+                match configopt.patch_with_config_files() {
+                    Ok(configopt) => {
+                        let mut s = Self::from_args_with_defaults(configopt);
+                        <Self as ConfigOpt>::take(&mut s, configopt);
+                        s
+                    }
+                    Err(_) => todo!(),
+                }
+            }
+            Err(_) => todo!(),
+        }
+    }
+
+    fn take(&mut self, configopt: &mut Self::ConfigOptType);
 }

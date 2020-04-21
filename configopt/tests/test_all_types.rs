@@ -1,4 +1,4 @@
-use configopt::{configopt_fields, ConfigOpt, ConfigOptDefaults};
+use configopt::{configopt_fields, ConfigOpt, ConfigOptDefaults, ConfigOptType};
 use serde::Deserialize;
 use std::{ffi::OsString, path::PathBuf};
 use structopt::StructOpt;
@@ -434,15 +434,15 @@ fn test_configopt_from_file_and_defaults() {
     );
     assert_eq!(
         Some(OsString::from("from_cli_again2")),
-        s.arg_default(&[String::from("not_optional")])
+        s.arg_default(&[String::from("notOptional")])
     );
     assert_eq!(
         Some(OsString::from("5.1")),
-        s.arg_default(&[String::from("double_optional")])
+        s.arg_default(&[String::from("doubleOptional")])
     );
     assert_eq!(
         Some(OsString::from("4 5")),
-        s.arg_default(&[String::from("optional_vec")])
+        s.arg_default(&[String::from("optionalVec")])
     );
     assert_eq!(
         Some(OsString::from("/this/is/a/path")),
@@ -451,25 +451,45 @@ fn test_configopt_from_file_and_defaults() {
 
     assert_eq!(
         Some(OsString::from("from_cli_again3")),
-        s.arg_default(&[String::from("cmd3"), String::from("field_a")])
+        s.arg_default(&[String::from("cmd3"), String::from("field-a")])
     );
     assert_eq!(
         Some(OsString::from("from_config4")),
-        s.arg_default(&[String::from("cmd3"), String::from("field_b")])
+        s.arg_default(&[String::from("cmd3"), String::from("field-b")])
     );
     assert_eq!(
         Some(OsString::from("9")),
-        s.arg_default(&[String::from("cmd3"), String::from("flat_optional")])
+        s.arg_default(&[String::from("cmd3"), String::from("flat-optional")])
     );
     assert_eq!(
         Some(OsString::from("true")),
-        s.arg_default(&[String::from("cmd3"), String::from("flat_maybe")])
+        s.arg_default(&[String::from("cmd3"), String::from("flat-maybe")])
     );
     assert_eq!(
         Some(OsString::from("8 9 10")),
-        s.arg_default(&[String::from("cmd3"), String::from("flat_numbers")])
+        s.arg_default(&[String::from("cmd3"), String::from("flat-numbers")])
     );
 }
 
 #[test]
-fn test_configopt_toml() {}
+fn test_setting_an_optional_field() {
+    use configopt::ConfigOpt;
+
+    let mut c = ConfigOptMyStruct {
+        maybe: None,
+        numbers: Vec::new(),
+        optional: Some(String::from("configopt_optional")),
+        not_optional: Some(String::from("configopt_not_optional")),
+        double_optional: None,
+        optional_vec: None,
+        path: Some(PathBuf::from("/some/path")),
+        cmd: None,
+        config_files: Vec::new(),
+        generate_config: None,
+    };
+    let mut s =
+        MyStruct::try_from_iter_with_defaults(&["app", "cmd3", "--field-a=from_cli"], &c).unwrap();
+    assert!(s.optional.is_none());
+    c.take_for(&mut s);
+    assert_eq!(Some(String::from("configopt_optional")), s.optional);
+}

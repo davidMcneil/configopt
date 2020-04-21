@@ -18,12 +18,12 @@ pub fn take(fields: &[ParsedField], other: &Ident) -> TokenStream {
             } else {
                 match field.structopt_ty() {
                     StructOptTy::Vec => quote_spanned! {span=>
-                        // TODO: Should it be wrapped in `Option`?
                         if !#other_field.is_empty() {
                             ::std::mem::swap(&mut #self_field, &mut #other_field);
                         }
                     },
-                    StructOptTy::Bool | StructOptTy::Option
+                    StructOptTy::Bool
+                    | StructOptTy::Option
                     | StructOptTy::OptionOption
                     | StructOptTy::OptionVec
                     | StructOptTy::Other => {
@@ -54,12 +54,12 @@ pub fn patch(fields: &[ParsedField], other: &Ident) -> TokenStream {
             } else {
                 match field.structopt_ty() {
                     StructOptTy::Vec => quote_spanned! {span=>
-                        // TODO: Should it be wrapped in `Option`?
                         if #self_field.is_empty() {
                             ::std::mem::swap(&mut #self_field, &mut #other_field);
                         }
                     },
-                    StructOptTy::Bool | StructOptTy::Option
+                    StructOptTy::Bool
+                    | StructOptTy::Option
                     | StructOptTy::OptionOption
                     | StructOptTy::OptionVec
                     | StructOptTy::Other => {
@@ -75,28 +75,48 @@ pub fn patch(fields: &[ParsedField], other: &Ident) -> TokenStream {
         .collect()
 }
 
-// fn merge(fields: &[ParsedField]) -> TokenStream {
-//     fields
-//         .iter()
-//         .map(|field| {
-//             let ident = field.ident();
-//             let span = field.span();
-//             if field.flatten() {
-//                 quote_spanned! {span=>
-//                     if let Some(mut val) = self.#ident.take() {
-//                         val.merge(&mut other.#ident)
-//                     }
-//                 }
-//             } else {
-//                 quote_spanned! {span=>
-//                     if let Some(val) = self.#ident.take() {
-//                         other.#ident = val;
-//                     }
-//                 }
-//             }
-//         })
-//         .collect()
-// }
+pub fn take_for(fields: &[ParsedField], other: &Ident) -> TokenStream {
+    fields
+        .iter()
+        .map(|field| {
+            let field_ident = field.ident();
+            let span = field.span();
+            let self_field = quote! {self.#field_ident};
+            let other_field = quote! {#other.#field_ident};
+            if field.flatten() {
+                quote_spanned! {span=>
+                    #self_field.take_for(&mut #other_field);
+                }
+            } else if field.subcommand() {
+                quote_spanned! {span=>
+                    // TODO
+                }
+            } else {
+                match field.structopt_ty() {
+                    StructOptTy::Vec => quote_spanned! {span=>
+                        if !#self_field.is_empty() {
+                            ::std::mem::swap(&mut #other_field, &mut #self_field);
+                        }
+                    },
+                    StructOptTy::Option | StructOptTy::OptionOption | StructOptTy::OptionVec => {
+                        quote_spanned! {span=>
+                            if #self_field.is_some() {
+                                #other_field = #self_field.take();
+                            }
+                        }
+                    }
+                    StructOptTy::Bool | StructOptTy::Other => {
+                        quote_spanned! {span=>
+                            if let Some(value) = #self_field.take() {
+                                #other_field = value;
+                            }
+                        }
+                    }
+                }
+            }
+        })
+        .collect()
+}
 
 // fn clear(fields: &[ParsedField]) -> TokenStream {
 //     fields

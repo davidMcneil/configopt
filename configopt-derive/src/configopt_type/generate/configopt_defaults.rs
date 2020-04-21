@@ -84,7 +84,7 @@ pub fn for_struct(fields: &[ParsedField]) -> TokenStream {
     let normal_fields = fields.iter().filter(|f| !f.flatten() && !f.subcommand());
     let normal_fields = normal_fields
         .map(|field| {
-            let arg_name = field.serde_name();
+            let arg_name = field.structopt_name();
             let to_default = to_default(field);
             quote! {
                 #arg_name => #to_default,
@@ -137,7 +137,6 @@ pub fn for_enum(variants: &[ParsedVariant]) -> TokenStream {
             let full_configopt_ident = variant.full_configopt_ident();
             let span = variant.span();
             let structopt_name = variant.structopt_name();
-            // TODO: Handle other variants
             match variant.field_type() {
                 FieldType::Unit => {
                     quote_spanned! {span=>
@@ -153,7 +152,7 @@ pub fn for_enum(variants: &[ParsedVariant]) -> TokenStream {
                 }
                 FieldType::Named => {
                     quote_spanned! {span=>
-                        // TODO
+                        // TODO: Actually lookup the values
                         #full_configopt_ident{..} => None,
                     }
                 }
