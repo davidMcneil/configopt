@@ -22,7 +22,7 @@ pub fn for_struct(fields: &[ParsedField]) -> TokenStream {
         }  else {
             let structopt_name = field.structopt_name();
             quote_spanned! {span=>
-                let key = if serde_prefix.len() == 0 {
+                let key = if serde_prefix.is_empty() {
                     String::from(#serde_name)
                 } else {
                     format!("{}.{}", serde_prefix.join("."), #serde_name)

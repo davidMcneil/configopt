@@ -12,7 +12,7 @@ use syn::{parse_macro_input, parse_quote, DeriveInput};
 pub fn configopt_derive(ast: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let ast = parse_macro_input!(ast as DeriveInput);
 
-    let (configopt_type, construct) = ConfigOptConstruct::convert_and_parse(ast.clone());
+    let (configopt_type, construct) = ConfigOptConstruct::convert_and_parse(ast);
     let expanded = construct.expand();
     let lints = generate::lints();
 

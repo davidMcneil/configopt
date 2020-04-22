@@ -62,7 +62,7 @@ where
     I::Item: Into<OsString> + Clone,
 {
     iter.into_iter()
-        .map(|a| <I::Item as Into<OsString>>::into(a))
+        .map(<I::Item as Into<OsString>>::into)
         .filter(|a| a != "-h" && a != "--help")
 }
 
