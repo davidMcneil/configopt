@@ -42,7 +42,7 @@ enum MyEnum {
     Cmd3(AnotherStruct),
 }
 
-// TODO: Remove this
+// TODO: Remove the need for implementing `Default`
 impl Default for MyEnum {
     fn default() -> Self {
         Self::Cmd1

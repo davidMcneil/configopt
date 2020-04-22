@@ -4,7 +4,7 @@ mod configopt_defaults_trait;
 use arena_trait::Arena;
 use colosseum::{sync::Arena as SyncArena, unsync::Arena as UnsyncArena};
 use lazy_static::lazy_static;
-use std::ffi::OsString;
+use std::{env, ffi::OsString};
 use structopt::{
     clap::{App, Result as ClapResult},
     StructOpt,
@@ -55,6 +55,53 @@ pub fn set_defaults(app: &mut App<'_, 'static>, defaults: &impl ConfigOptDefault
     set_defaults_impl(app, &mut arg_path, defaults, arena);
 }
 
+/// CODO
+fn filter_help<I>(iter: I) -> impl Iterator<Item = OsString>
+where
+    I: IntoIterator,
+    I::Item: Into<OsString> + Clone,
+{
+    iter.into_iter()
+        .map(|a| <I::Item as Into<OsString>>::into(a))
+        .filter(|a| a != "-h" && a != "--help")
+}
+
+/// CODO
+pub trait IgnoreHelp: StructOpt + Sized {
+    /// CODO
+    fn from_args_ignore_help() -> Self {
+        let iter = filter_help(env::args());
+        Self::from_iter(iter)
+    }
+
+    /// CODO
+    fn try_from_args_ignore_help() -> ClapResult<Self> {
+        let iter = filter_help(env::args());
+        Self::from_iter_safe(iter)
+    }
+
+    /// CODO
+    fn from_iter_ignore_help<I>(iter: I) -> Self
+    where
+        I: IntoIterator,
+        I::Item: Into<OsString> + Clone,
+    {
+        let iter = filter_help(iter);
+        Self::from_iter(iter)
+    }
+
+    /// CODO
+    fn try_from_iter_ignore_help<I>(iter: I) -> ClapResult<Self>
+    where
+        I: IntoIterator,
+        I::Item: Into<OsString> + Clone,
+    {
+        let iter = filter_help(iter);
+        Self::from_iter_safe(iter)
+    }
+}
+
+/// CODO
 pub trait ConfigOptType: ConfigOptDefaults + StructOpt {
     /// If the `--generate-config` flag is set output the current configuration to stdout and exit.
     fn maybe_generate_config_file_and_exit(&mut self);
@@ -62,6 +109,7 @@ pub trait ConfigOptType: ConfigOptDefaults + StructOpt {
     /// Patch with values from the `--config-files` argument
     fn patch_with_config_files(&mut self) -> std::result::Result<&mut Self, ::std::io::Error>;
 
+    #[doc(hidden)]
     fn toml_config_with_prefix(&self, serde_prefix: &[String]) -> String;
 
     /// Generate TOML configuration.
@@ -70,6 +118,7 @@ pub trait ConfigOptType: ConfigOptDefaults + StructOpt {
     }
 }
 
+/// CODO
 pub trait ConfigOpt: Sized + StructOpt {
     type ConfigOptType: ConfigOptType;
 
@@ -142,5 +191,6 @@ pub trait ConfigOpt: Sized + StructOpt {
         }
     }
 
+    #[doc(hidden)]
     fn take(&mut self, configopt: &mut Self::ConfigOptType);
 }

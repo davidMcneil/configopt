@@ -13,7 +13,7 @@ pub fn for_struct(fields: &[ParsedField]) -> TokenStream {
             quote! {}
         } else if field.flatten() {
             quote_spanned! {span=>
-                // TODO: Check if this is #[serde(flatten)]
+                // TODO: Check if this is `serde` flatten and not just `structopt` flatten
                 // let mut new_prefix = serde_prefix.to_vec();
                 // new_prefix.push(String::from(#serde_name));
                 // result = format!("{}{}", result, #self_field.toml_config_with_prefix(&new_prefix));

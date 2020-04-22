@@ -89,7 +89,7 @@ pub fn take_for(fields: &[ParsedField], other: &Ident) -> TokenStream {
                 }
             } else if field.subcommand() {
                 quote_spanned! {span=>
-                    // TODO
+                    // TODO: handle subcommands
                 }
             } else {
                 match field.structopt_ty() {

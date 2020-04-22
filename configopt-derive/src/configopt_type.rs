@@ -48,7 +48,8 @@ impl ConfigOptConstruct {
         let structopt_rename = parse::structopt_rename_all(&configopt_type.attrs)
             // Structopt defaults to kebab case if no `rename_all` attribute is specified
             .unwrap_or(CasingStyle::Kebab);
-        let serde_rename = CasingStyle::Verbatim; // TODO
+        // TODO: Actually lookup the serde name
+        let serde_rename = CasingStyle::Verbatim;
 
         // Make all fields configopt
         let configopt_construct = match &mut configopt_type.data {
@@ -114,7 +115,8 @@ impl ConfigOptConstruct {
 
         // Add the derives
         derives.push(parse_quote! {StructOpt});
-        derives.push(parse_quote! {Deserialize}); // TODO: Remove this requirement
+        // TODO: Remove this requirement
+        derives.push(parse_quote! {Deserialize});
         configopt_type.append_derives(derives);
 
         (configopt_type, configopt_construct)
@@ -231,6 +233,9 @@ impl ConfigOptConstruct {
                     }
 
                     #lints
+                    impl ::configopt::IgnoreHelp for #configopt_ident {}
+
+                    #lints
                     impl ::configopt::ConfigOptType for #configopt_ident {
                         fn maybe_generate_config_file_and_exit(&mut self) {
                             #handle_config_files_generate
@@ -273,6 +278,9 @@ impl ConfigOptConstruct {
                             }
                         }
                     }
+
+                    #lints
+                    impl ::configopt::IgnoreHelp for #configopt_ident {}
 
                     #lints
                     impl ::configopt::ConfigOptType for #configopt_ident {

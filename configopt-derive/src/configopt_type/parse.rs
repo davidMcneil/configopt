@@ -199,7 +199,8 @@ impl ParsedVariant {
             full_configopt_ident,
             span: variant.span(),
             field_type: (&variant.fields).into(),
-            structopt_name: variant_ident.to_string().to_kebab_case(), // TODO
+            // TODO: Actually lookup the `structopt` name
+            structopt_name: variant_ident.to_string().to_kebab_case(),
         }
     }
 

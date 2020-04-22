@@ -43,8 +43,8 @@ fn test_configopt_with_optional_bool() {
     };
     let s = MyStruct::try_from_iter_with_defaults(&["app"], &c).unwrap();
     assert_eq!(None, s.maybe);
-    // TODO: This is kinda odd. Because we set the default to false only passing the flag does not
-    // make the value true. We could probably use a `from_occurrences` parser to get around this.
+    // TODO: This is kinda odd. Because we set the default to `false`, passing the flag does not
+    // make the value `true`. We could probably use a `from_occurrences` parser to get around this.
     let s = MyStruct::try_from_iter_with_defaults(&["app", "--maybe"], &c).unwrap();
     assert_eq!(Some(false), s.maybe);
     let s = MyStruct::try_from_iter_with_defaults(&["app", "--maybe=true"], &c).unwrap();
