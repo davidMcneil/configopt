@@ -425,10 +425,11 @@ fn test_configopt_from_file_and_defaults() {
         Some(OsString::from("false")),
         s.arg_default(&[String::from("maybe")])
     );
-    assert_eq!(
-        Some(OsString::from("1 2 3")),
-        s.arg_default(&[String::from("numbers")])
-    );
+    // TODO (DM): Defaults for Vecs was removed. How exactly should it work?
+    // assert_eq!(
+    //     Some(OsString::from("1 2 3")),
+    //     s.arg_default(&[String::from("numbers")])
+    // );
     assert_eq!(
         Some(OsString::from("from_config1")),
         s.arg_default(&[String::from("optional")])
@@ -441,10 +442,11 @@ fn test_configopt_from_file_and_defaults() {
         Some(OsString::from("5.1")),
         s.arg_default(&[String::from("doubleOptional")])
     );
-    assert_eq!(
-        Some(OsString::from("4 5")),
-        s.arg_default(&[String::from("optionalVec")])
-    );
+    // TODO (DM): Defaults for Vecs was removed. How exactly should it work?
+    // assert_eq!(
+    //     Some(OsString::from("4 5")),
+    //     s.arg_default(&[String::from("optionalVec")])
+    // );
     assert_eq!(
         Some(OsString::from("/this/is/a/path")),
         s.arg_default(&[String::from("path")])
@@ -466,10 +468,11 @@ fn test_configopt_from_file_and_defaults() {
         Some(OsString::from("true")),
         s.arg_default(&[String::from("cmd3"), String::from("flat-maybe")])
     );
-    assert_eq!(
-        Some(OsString::from("8 9 10")),
-        s.arg_default(&[String::from("cmd3"), String::from("flat-numbers")])
-    );
+    // TODO (DM): Defaults for Vecs was removed. How exactly should it work?
+    // assert_eq!(
+    //     Some(OsString::from("8 9 10")),
+    //     s.arg_default(&[String::from("cmd3"), String::from("flat-numbers")])
+    // );
 }
 
 #[test]
