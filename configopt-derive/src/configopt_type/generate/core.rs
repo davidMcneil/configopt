@@ -1,4 +1,4 @@
-use crate::configopt_type::parse::{ParsedField, StructOptTy};
+use crate::configopt_type::parse::{FieldType, ParsedField, ParsedVariant, StructOptTy};
 use proc_macro2::TokenStream;
 use quote::{quote, quote_spanned};
 use syn::{spanned::Spanned, Ident};
@@ -211,3 +211,23 @@ pub fn take_for(fields: &[ParsedField], other: &Ident) -> TokenStream {
 //         Ok(#create)
 //     }
 // }
+
+pub fn take_enum(variants: &[ParsedVariant]) -> TokenStream {
+    variants
+        .iter()
+        .map(|variant| match variant.field_type() {
+            FieldType::Unnamed => {
+                let full_ident = variant.full_ident();
+                let full_configopt_ident = variant.full_configopt_ident();
+                quote! {
+                    (#full_ident(self_variant), #full_configopt_ident(other_variant)) => {
+                        self_variant.take(other_variant);
+                    }
+                }
+            }
+            FieldType::Named | FieldType::Unit => {
+                quote! {}
+            }
+        })
+        .collect()
+}

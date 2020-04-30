@@ -10,7 +10,7 @@ use syn::{
 };
 
 pub enum ConfigOptConstruct {
-    Struct(Ident, Vec<ParsedField>),
+    Struct(Ident, Option<String>, Vec<ParsedField>),
     Enum(Ident, Vec<ParsedVariant>),
 }
 
@@ -21,6 +21,20 @@ impl ConfigOptConstruct {
 
         // Change the ident to a configopt ident
         configopt_type.ident = parse::configopt_ident(&configopt_type.ident);
+
+        // Check if we have a default config file
+        let default_config_file = if let Some(default_config_file) = configopt_type
+            .tag_parameter(&parse_quote!(configopt), &parse_quote!(default_config_file))
+        {
+            match default_config_file {
+                syn::NestedMeta::Lit(syn::Lit::Str(default_config_file)) => {
+                    Some(default_config_file.value())
+                }
+                _ => panic!("`configopt(default_config_file)` expected string literal"),
+            }
+        } else {
+            None
+        };
 
         // Get a list of attributes to retain on the configopt type
         let mut retained_attrs = configopt_type
@@ -34,6 +48,8 @@ impl ConfigOptConstruct {
                     .expect("#[configopt(attrs(..))] expected an ident")
             })
             .collect::<Vec<_>>();
+
+        // We implicitly retain these attributes
         retained_attrs.push(parse_quote! {structopt});
 
         // Get the derives for the configopt type
@@ -71,7 +87,7 @@ impl ConfigOptConstruct {
                                 )
                             })
                             .collect::<Vec<_>>();
-                        ConfigOptConstruct::Struct(ident, parsed_fields)
+                        ConfigOptConstruct::Struct(ident, default_config_file, parsed_fields)
                     }
                     Fields::Unnamed(_) => {
                         panic!("`ConfigOpt` cannot be derived for unnamed struct")
@@ -128,7 +144,7 @@ impl ConfigOptConstruct {
         let other = parse_quote! {other};
         let configopt_ident = parse::configopt_ident(ident);
         match self {
-            Self::Struct(_, parsed_fields) => {
+            Self::Struct(_, default_config_file, parsed_fields) => {
                 let configopt_take = generate::core::take(&parsed_fields, &other);
                 let configopt_patch = generate::core::patch(&parsed_fields, &other);
                 let configopt_take_for = generate::core::take_for(&parsed_fields, &other);
@@ -137,6 +153,8 @@ impl ConfigOptConstruct {
                 // let configopt_is_complete = is_complete(&parsed_fields);
                 // let configopt_from = from(&parsed_fields);
                 // let configopt_try_from = try_from(&parsed_fields);
+                let default_config_files =
+                    generate::default_config_files::generate(default_config_file.as_deref());
                 let handle_config_files_generate =
                     generate::handle_config_files::generate_for_struct(parsed_fields.as_slice());
                 let handle_config_files_patch = generate::handle_config_files::patch_for_struct(
@@ -179,6 +197,8 @@ impl ConfigOptConstruct {
                     //     pub fn is_complete(&self) -> bool {
                     //         #configopt_is_complete
                     //     }
+
+                        #default_config_files
                     }
 
                     // #lints
@@ -198,17 +218,20 @@ impl ConfigOptConstruct {
 
                     #lints
                     impl ::std::convert::TryFrom<&::std::path::Path> for #configopt_ident {
-                        type Error = ::std::io::Error;
+                        type Error = ::configopt::Error;
 
                         fn try_from(path: &::std::path::Path) -> ::std::result::Result<Self, Self::Error> {
-                            let contents = ::std::fs::read_to_string(path)?;
-                            Ok(::toml::from_str(&contents)?)
+                            let contents = ::std::fs::read_to_string(path)
+                                .map_err(|e| Self::Error::ConfigFile(path.to_path_buf(), e))?;
+                            let s = ::toml::from_str(&contents)
+                                .map_err(|e| Self::Error::ConfigFile(path.to_path_buf(), e.into()))?;
+                            Ok(s)
                         }
                     }
 
                     #lints
                     impl<T: ::std::convert::AsRef<::std::path::Path>> ::std::convert::TryFrom<&[T]> for #configopt_ident {
-                        type Error = ::std::io::Error;
+                        type Error = ::configopt::Error;
 
                         fn try_from(paths: &[T]) -> ::std::result::Result<Self, Self::Error> {
                             let mut result = #configopt_ident::default();
@@ -237,11 +260,12 @@ impl ConfigOptConstruct {
 
                     #lints
                     impl ::configopt::ConfigOptType for #configopt_ident {
-                        fn maybe_generate_config_file_and_exit(&mut self) {
+                        fn maybe_config_file(&self) -> Option<String> {
                             #handle_config_files_generate
+                            None
                         }
 
-                        fn patch_with_config_files(&mut self) -> std::result::Result<&mut #configopt_ident, ::std::io::Error> {
+                        fn patch_with_config_files(&mut self) -> ::configopt::Result<&mut #configopt_ident> {
                             #handle_config_files_patch
                         }
 
@@ -268,6 +292,7 @@ impl ConfigOptConstruct {
                     generate::handle_config_files::patch_for_enum(parsed_variants);
                 let configopt_defaults_variant =
                     generate::configopt_defaults::for_enum(&parsed_variants);
+                let configopt_take = generate::core::take_enum(&parsed_variants);
                 quote! {
                     #lints
                     impl ::configopt::ConfigOptDefaults for #configopt_ident {
@@ -284,15 +309,16 @@ impl ConfigOptConstruct {
 
                     #lints
                     impl ::configopt::ConfigOptType for #configopt_ident {
-                        fn maybe_generate_config_file_and_exit(&mut self) {
+                        fn maybe_config_file(&self) -> Option<String> {
                             match self {
                                 #handle_config_files_generate
                                 _ => {}
                             }
+                            None
                         }
 
 
-                        fn patch_with_config_files(&mut self) -> std::result::Result<&mut #configopt_ident, ::std::io::Error> {
+                        fn patch_with_config_files(&mut self) -> ::configopt::Result<&mut #configopt_ident> {
                             match self {
                                 #handle_config_files_patch
                                 _ => {}
@@ -310,7 +336,12 @@ impl ConfigOptConstruct {
                         type ConfigOptType = #configopt_ident;
 
                         fn take(&mut self, configopt: &mut Self::ConfigOptType) {
-                            todo!()
+                            match (self, configopt) {
+                                #configopt_take
+                                _ => {
+                                    panic!("TODO: take for enum is not fully implemented");
+                                }
+                            }
                         }
                     }
 
@@ -321,7 +352,7 @@ impl ConfigOptConstruct {
 
     fn ident(&self) -> &Ident {
         match self {
-            Self::Struct(ident, _) => ident,
+            Self::Struct(ident, _, _) => ident,
             Self::Enum(ident, _) => ident,
         }
     }
@@ -331,7 +362,7 @@ impl ConfigOptConstruct {
 fn retain_attrs(attrs: &mut Vec<Attribute>, retained_attrs: &[Ident]) {
     attrs.retain(|a| retained_attrs.iter().any(|i| a.path.is_ident(i)));
     for attr in attrs {
-        parse::trim_structopt_required_attr(attr);
+        parse::trim_structopt_attrs(attr);
     }
 }
 

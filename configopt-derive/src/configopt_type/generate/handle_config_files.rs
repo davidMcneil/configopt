@@ -1,21 +1,14 @@
-use crate::configopt_type::parse::{FieldType, ParsedField, ParsedVariant};
+use crate::configopt_type::parse::{self, FieldType, ParsedField, ParsedVariant};
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::Ident;
 
-fn has_configopt_fields(parsed: &[ParsedField]) -> bool {
-    parsed.iter().any(|f| f.ident() == "generate_config")
-}
-
 pub fn generate_for_struct(parsed: &[ParsedField]) -> TokenStream {
-    let has_config_fields = has_configopt_fields(parsed);
+    let has_config_fields = parse::has_configopt_fields(parsed);
     if has_config_fields {
         quote! {
             if self.generate_config.unwrap_or_default() {
-                use ::std::io::Write;
-                let out = ::std::io::stdout();
-                writeln!(&mut out.lock(), "{}", self.toml_config()).expect("Error writing Error to stdout");
-                ::std::process::exit(0);
+                return Some(self.toml_config())
             }
             // TODO: handle recursive subcommands
         }
@@ -27,7 +20,7 @@ pub fn generate_for_struct(parsed: &[ParsedField]) -> TokenStream {
 }
 
 pub fn patch_for_struct(parsed: &[ParsedField], configopt_ident: &Ident) -> TokenStream {
-    let has_config_fields = has_configopt_fields(parsed);
+    let has_config_fields = parse::has_configopt_fields(parsed);
     let patch_subcommands = parsed
         .iter()
         .filter(|f| f.subcommand())
@@ -45,6 +38,17 @@ pub fn patch_for_struct(parsed: &[ParsedField], configopt_ident: &Ident) -> Toke
         quote! {
             use ::std::convert::TryFrom;
             let mut from_config_files = #configopt_ident::try_from(self.config_files.as_slice())?;
+            for config_file in #configopt_ident::default_config_files() {
+                match #configopt_ident::try_from(config_file.as_path()) {
+                    Ok(mut from_default_config_file) => {
+                        from_config_files.patch(&mut from_default_config_file);
+                    },
+                    Err(e) if e.config_file_not_found() => {
+                        // If we could not find the config file do nothing.
+                    },
+                    Err(e) => return Err(e),
+                }
+            }
             self.patch(&mut from_config_files);
             #patch_subcommands
             Ok(self)
@@ -65,7 +69,9 @@ pub fn generate_for_enum(variants: &[ParsedVariant]) -> TokenStream {
                 let full_configopt_ident = variant.full_configopt_ident();
                 quote! {
                     #full_configopt_ident(variant) => {
-                        variant.maybe_generate_config_file_and_exit();
+                        if let Some(config) = variant.maybe_config_file() {
+                            return Some(config);
+                        }
                     }
                 }
             }

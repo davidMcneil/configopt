@@ -1,5 +1,6 @@
 pub mod configopt_defaults;
 pub mod core;
+pub mod default_config_files;
 pub mod handle_config_files;
 pub mod toml_config;
 

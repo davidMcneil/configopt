@@ -23,24 +23,26 @@ fn to_default(field: &ParsedField) -> TokenStream {
         }
     } else {
         quote! {
-            (&value).arg_default(arg_path)
+            value.arg_default(arg_path)
         }
     };
     // Code to join a Vec<OsString> into a OsString
     let join_os_str_vec = quote! {
-        let mut result = ::std::ffi::OsString::new();
-        for (i, v) in vec.iter().enumerate() {
-            if i != 0 {
-                // TODO: configurable separator
-                result.push(" ");
-            }
-            result.push(&v);
-        }
-        if result.is_empty() {
-            None
-        } else {
-            Some(result)
-        }
+        // TODO: Setting defaults for vecs does not really work and needs more testing
+        // let mut result = ::std::ffi::OsString::new();
+        // for (i, v) in vec.iter().enumerate() {
+        //     if i != 0 {
+        //         // TODO: configurable separator
+        //         result.push(" ");
+        //     }
+        //     result.push(&v);
+        // }
+        // if result.is_empty() {
+        //     None
+        // } else {
+        //     Some(result)
+        // }
+        None
     };
     // Based on the type of the field convert it to a String. Everything is wrapped
     // in an Option because this is always run on a `ConfigOpt` type.

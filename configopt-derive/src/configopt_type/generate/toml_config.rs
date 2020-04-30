@@ -21,6 +21,9 @@ pub fn for_struct(fields: &[ParsedField]) -> TokenStream {
             }
         }  else {
             let structopt_name = field.structopt_name();
+            let structopt_rename = field.structopt_rename();
+            let generate_config_arg_name = structopt_rename.rename("generate-config"); 
+            let config_files_arg_name = structopt_rename.rename("config-files"); 
             quote_spanned! {span=>
                 let key = if serde_prefix.is_empty() {
                     String::from(#serde_name)
@@ -67,19 +70,16 @@ pub fn for_struct(fields: &[ParsedField]) -> TokenStream {
                         }
                     }
                 }
-                if !hidden && !&["config-files", "generate-config"].contains(&#structopt_name) {
+                if !hidden && !&[#generate_config_arg_name, #config_files_arg_name].contains(&#structopt_name) {
                     if !comment.is_empty() {
-                        comment = comment.lines().map(|l| format!("# {}\n", l)).collect::<String>();
+                        comment = comment.lines().map(|l| format!("### {}\n", l)).collect::<String>();
                     }
                     match toml::Value::try_from(&#self_field) {
                         Ok(val) => {
                             use toml::value::Value;
                             match &val {
-                                Value::Boolean(b) if !*b => {
-                                    result = format!("{}{}## {} = {}\n\n", result, comment, key, val);
-                                }
                                 Value::Array(a) if a.is_empty() => {
-                                    result = format!("{}{}## {} = {}\n\n", result, comment, key, val);
+                                    result = format!("{}{}# {} = {}\n\n", result, comment, key, val);
                                 }
                                 _ => {
                                     result = format!("{}{}{} = {}\n\n", result, comment, key, val);
@@ -87,7 +87,7 @@ pub fn for_struct(fields: &[ParsedField]) -> TokenStream {
                             }
                         }
                         Err(toml::ser::Error::UnsupportedNone) => {
-                            result = format!("{}{}## {} =\n\n", result, comment, key);
+                            result = format!("{}{}# {} =\n\n", result, comment, key);
                         }
                         _ => {}
                     }

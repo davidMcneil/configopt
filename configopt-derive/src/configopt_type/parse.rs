@@ -9,9 +9,7 @@ use std::{convert::Infallible, str::FromStr};
 use structopt_parser::StructOptAttr;
 use syn::{parse_quote, spanned::Spanned, Expr, Field, Fields, Ident, Type, Variant};
 
-pub use structopt_parser::{
-    rename_all as structopt_rename_all, trim_structopt_required_attr, StructOptTy,
-};
+pub use structopt_parser::{rename_all as structopt_rename_all, trim_structopt_attrs, StructOptTy};
 
 pub fn configopt_ident(ident: &Ident) -> Ident {
     ident.prepend("ConfigOpt")
@@ -44,7 +42,8 @@ impl FromStr for CasingStyle {
 }
 
 impl CasingStyle {
-    fn rename(self, s: &str) -> String {
+    pub fn rename(self, s: impl AsRef<str>) -> String {
+        let s = s.as_ref();
         match self {
             CasingStyle::Kebab => s.to_kebab_case(),
             CasingStyle::Snake => s.to_snake_case(),
@@ -73,6 +72,10 @@ pub fn inner_ty(ty: &mut Type) -> &mut Ident {
     }
 }
 
+pub fn has_configopt_fields(parsed: &[ParsedField]) -> bool {
+    parsed.iter().any(|f| f.ident() == "generate_config")
+}
+
 pub struct ParsedField {
     ident: Ident,
     structopt_ty: StructOptTy,
@@ -80,6 +83,7 @@ pub struct ParsedField {
     span: Span,
     flatten: bool,
     subcommand: bool,
+    structopt_rename: CasingStyle,
     structopt_name: String,
     serde_name: String,
     to_default: Option<Expr>,
@@ -109,6 +113,7 @@ impl ParsedField {
             structopt_ty: StructOptTy::from_syn_ty(&ty),
             configopt_inner_ty: configopt_ident(&inner_ty),
             span: field.span(),
+            structopt_rename,
             structopt_name,
             serde_name,
             flatten: structopt_attrs.iter().any(|a| match a {
@@ -144,6 +149,10 @@ impl ParsedField {
 
     pub fn subcommand(&self) -> bool {
         self.subcommand
+    }
+
+    pub fn structopt_rename(&self) -> CasingStyle {
+        self.structopt_rename
     }
 
     pub fn structopt_name(&self) -> &str {
@@ -183,6 +192,7 @@ impl From<&Fields> for FieldType {
 }
 
 pub struct ParsedVariant {
+    full_ident: TokenStream,
     full_configopt_ident: TokenStream,
     span: Span,
     field_type: FieldType,
@@ -192,16 +202,22 @@ pub struct ParsedVariant {
 impl ParsedVariant {
     pub fn new(type_ident: &Ident, variant: &Variant) -> Self {
         let variant_ident = &variant.ident;
+        let full_ident = parse_quote! {#type_ident::#variant_ident};
         let configopt_type_ident = configopt_ident(&type_ident);
         let full_configopt_ident = parse_quote! {#configopt_type_ident::#variant_ident};
 
         Self {
+            full_ident,
             full_configopt_ident,
             span: variant.span(),
             field_type: (&variant.fields).into(),
             // TODO: Actually lookup the `structopt` name
             structopt_name: variant_ident.to_string().to_kebab_case(),
         }
+    }
+
+    pub fn full_ident(&self) -> &TokenStream {
+        &self.full_ident
     }
 
     pub fn full_configopt_ident(&self) -> &TokenStream {

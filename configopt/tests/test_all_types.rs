@@ -19,6 +19,7 @@ struct MyStruct {
     #[structopt(long)]
     not_optional: String,
     #[structopt(long)]
+    #[allow(clippy::option_option)]
     double_optional: Option<Option<f32>>,
     #[structopt(long)]
     optional_vec: Option<Vec<u32>>,
@@ -116,7 +117,7 @@ fn test_configopt_generate_config() {
             config_files: Vec::new(),
             generate_config: Some(true),
         },
-        ConfigOptMyStruct::from_iter_safe(&["app", "--generateConfig"]).unwrap()
+        ConfigOptMyStruct::from_iter_safe(&["app", "--generate-config"]).unwrap()
     );
     assert_eq!(
         ConfigOptMyStruct {
@@ -168,7 +169,7 @@ fn test_configopt_generate_config() {
         },
         ConfigOptMyStruct::from_iter_safe(&[
             "app",
-            "--generateConfig",
+            "--generate-config",
             "cmd3",
             "--generate-config"
         ])
@@ -199,7 +200,7 @@ fn test_configopt_generate_config() {
         },
         ConfigOptMyStruct::from_iter_safe(&[
             "app",
-            "--generateConfig=true",
+            "--generate-config=true",
             "cmd3",
             "--generate-config=false"
         ])
@@ -364,7 +365,7 @@ fn test_configopt_from_empty_file() {
     let config_file = NamedTempFile::new().unwrap();
     let mut cli = Vec::new();
     cli.push("app");
-    let config_arg = format!("--configFiles={}", config_file.path().to_string_lossy());
+    let config_arg = format!("--config-files={}", config_file.path().to_string_lossy());
     cli.push(&config_arg);
     cli.push("cmd3");
     let config_arg = format!("--config-files={}", config_file.path().to_string_lossy());
@@ -410,7 +411,7 @@ fn test_configopt_from_file_and_defaults() {
     let mut cli = Vec::new();
     cli.push("app");
     cli.push("--notOptional=from_cli_again2");
-    let config_arg_1 = format!("--configFiles={}", config_file_1.path().to_string_lossy());
+    let config_arg_1 = format!("--config-files={}", config_file_1.path().to_string_lossy());
     cli.push(&config_arg_1);
     cli.push("cmd3");
     cli.push("--field-a=from_cli_again3");

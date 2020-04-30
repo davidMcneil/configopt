@@ -35,11 +35,11 @@ pub fn configopt_fields(
 
     let additional_fields = parse_quote!({
         /// Paths to config files to read
-        #[structopt(long)]
+        #[structopt(long = "config-files")]
         #[serde(skip)]
         config_files: Vec<::std::path::PathBuf>,
         /// Generate a TOML config
-        #[structopt(long, default_value = "true", hide_default_value = true)]
+        #[structopt(long = "generate-config", default_value = "true", hide_default_value = true)]
         #[serde(skip)]
         generate_config: Option<bool>,
     });
