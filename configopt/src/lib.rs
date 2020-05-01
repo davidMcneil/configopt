@@ -229,12 +229,12 @@ pub trait ConfigOpt: Sized + StructOpt {
         // actual app.
         match Self::ConfigOptType::try_from_iter_ignore_help(&iter) {
             Ok(mut configopt) => {
+                configopt.patch_with_config_files()?;
                 if let Some(config) = configopt.maybe_config_file() {
                     return Err(Error::ConfigGenerated(config));
                 }
-                configopt.patch_with_config_files()?;
                 // Take into account any values from config files by setting default values. This
-                // is need so we do not get failures for missing arguments when they are really
+                // is needed so we do not get failures for missing arguments when they are really
                 // set in the config file.
                 let mut s = Self::try_from_iter_with_defaults(&iter, &configopt)?;
                 // Take into account any values from config files by taking the values from the
