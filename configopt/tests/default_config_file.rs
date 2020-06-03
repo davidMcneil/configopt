@@ -10,6 +10,7 @@ struct NoDefaultConfigFile {
 }
 
 #[derive(ConfigOpt, StructOpt)]
+// TODO: Make this use `=`
 #[configopt(default_config_file("/my/default/config/file"))]
 struct DefaultConfigFile {
     #[structopt(long)]

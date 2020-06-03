@@ -8,7 +8,7 @@ use syn::{
 #[allow(clippy::large_enum_variant)]
 pub enum ConfigOptAttr {
     Nested,
-    ToDefault(Expr),
+    ToOsString(Expr),
 }
 
 impl Parse for ConfigOptAttr {
@@ -23,8 +23,8 @@ impl Parse for ConfigOptAttr {
             #[allow(clippy::match_wild_err_arm)]
             match input.parse::<Expr>() {
                 Ok(expr) => {
-                    if name_str == "to_default" {
-                        Ok(ConfigOptAttr::ToDefault(expr))
+                    if name_str == "to_os_string" {
+                        Ok(ConfigOptAttr::ToOsString(expr))
                     } else {
                         panic!(
                             "`configopt` unrecognized `name = value` attribute {}",

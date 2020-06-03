@@ -1,4 +1,4 @@
-use configopt::{configopt_fields, ConfigOpt, ConfigOptDefaults, ConfigOptType};
+use configopt::{configopt_fields, ConfigOpt, ConfigOptArgToOsString, ConfigOptType};
 use serde::Deserialize;
 use std::{ffi::OsString, path::PathBuf};
 use structopt::StructOpt;
@@ -423,55 +423,55 @@ fn test_configopt_from_file_and_defaults() {
 
     assert_eq!(
         Some(OsString::from("false")),
-        s.arg_default(&[String::from("maybe")])
+        s.arg_to_os_string(&[String::from("maybe")])
     );
     // TODO (DM): Defaults for Vecs was removed. How exactly should it work?
     // assert_eq!(
     //     Some(OsString::from("1 2 3")),
-    //     s.arg_default(&[String::from("numbers")])
+    //     s.arg_to_os_string(&[String::from("numbers")])
     // );
     assert_eq!(
         Some(OsString::from("from_config1")),
-        s.arg_default(&[String::from("optional")])
+        s.arg_to_os_string(&[String::from("optional")])
     );
     assert_eq!(
         Some(OsString::from("from_cli_again2")),
-        s.arg_default(&[String::from("notOptional")])
+        s.arg_to_os_string(&[String::from("notOptional")])
     );
     assert_eq!(
         Some(OsString::from("5.1")),
-        s.arg_default(&[String::from("doubleOptional")])
+        s.arg_to_os_string(&[String::from("doubleOptional")])
     );
     // TODO (DM): Defaults for Vecs was removed. How exactly should it work?
     // assert_eq!(
     //     Some(OsString::from("4 5")),
-    //     s.arg_default(&[String::from("optionalVec")])
+    //     s.arg_to_os_string(&[String::from("optionalVec")])
     // );
     assert_eq!(
         Some(OsString::from("/this/is/a/path")),
-        s.arg_default(&[String::from("path")])
+        s.arg_to_os_string(&[String::from("path")])
     );
 
     assert_eq!(
         Some(OsString::from("from_cli_again3")),
-        s.arg_default(&[String::from("cmd3"), String::from("field-a")])
+        s.arg_to_os_string(&[String::from("cmd3"), String::from("field-a")])
     );
     assert_eq!(
         Some(OsString::from("from_config4")),
-        s.arg_default(&[String::from("cmd3"), String::from("field-b")])
+        s.arg_to_os_string(&[String::from("cmd3"), String::from("field-b")])
     );
     assert_eq!(
         Some(OsString::from("9")),
-        s.arg_default(&[String::from("cmd3"), String::from("flat-optional")])
+        s.arg_to_os_string(&[String::from("cmd3"), String::from("flat-optional")])
     );
     assert_eq!(
         Some(OsString::from("true")),
-        s.arg_default(&[String::from("cmd3"), String::from("flat-maybe")])
+        s.arg_to_os_string(&[String::from("cmd3"), String::from("flat-maybe")])
     );
     // TODO (DM): Defaults for Vecs was removed. How exactly should it work?
     // assert_eq!(
     //     Some(OsString::from("8 9 10")),
-    //     s.arg_default(&[String::from("cmd3"), String::from("flat-numbers")])
+    //     s.arg_to_os_string(&[String::from("cmd3"), String::from("flat-numbers")])
     // );
 }
 

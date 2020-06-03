@@ -244,8 +244,8 @@ impl ConfigOptConstruct {
                     }
 
                     #lints
-                    impl ::configopt::ConfigOptDefaults for #configopt_ident {
-                        fn arg_default(&self, arg_path: &[String]) -> Option<::std::ffi::OsString> {
+                    impl ::configopt::ConfigOptArgToOsString for #configopt_ident {
+                        fn arg_to_os_string(&self, arg_path: &[String]) -> Option<::std::ffi::OsString> {
                             let full_arg_path = arg_path;
                             if let Some((arg_name, arg_path)) = full_arg_path.split_first() {
                                 #configopt_defaults_field_match
@@ -295,8 +295,8 @@ impl ConfigOptConstruct {
                 let configopt_take = generate::core::take_enum(&parsed_variants);
                 quote! {
                     #lints
-                    impl ::configopt::ConfigOptDefaults for #configopt_ident {
-                        fn arg_default(&self, arg_path: &[String]) -> Option<::std::ffi::OsString> {
+                    impl ::configopt::ConfigOptArgToOsString for #configopt_ident {
+                        fn arg_to_os_string(&self, arg_path: &[String]) -> Option<::std::ffi::OsString> {
                             match self {
                                 #configopt_defaults_variant
                                 _ => None,

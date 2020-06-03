@@ -86,7 +86,7 @@ pub struct ParsedField {
     structopt_rename: CasingStyle,
     structopt_name: String,
     serde_name: String,
-    to_default: Option<Expr>,
+    to_os_string: Option<Expr>,
 }
 
 impl ParsedField {
@@ -124,8 +124,8 @@ impl ParsedField {
                 StructOptAttr::Subcommand => true,
                 _ => false,
             }),
-            to_default: configopt_attrs.into_iter().find_map(|a| match a {
-                ConfigOptAttr::ToDefault(expr) => Some(expr),
+            to_os_string: configopt_attrs.into_iter().find_map(|a| match a {
+                ConfigOptAttr::ToOsString(expr) => Some(expr),
                 _ => None,
             }),
         }
@@ -163,8 +163,8 @@ impl ParsedField {
         &self.serde_name
     }
 
-    pub fn to_default(&self) -> Option<&Expr> {
-        self.to_default.as_ref()
+    pub fn to_os_string(&self) -> Option<&Expr> {
+        self.to_os_string.as_ref()
     }
 }
 

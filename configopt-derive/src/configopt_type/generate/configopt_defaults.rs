@@ -3,27 +3,27 @@ use proc_macro2::TokenStream;
 use quote::{quote, quote_spanned};
 use syn::spanned::Spanned;
 
-fn to_default(field: &ParsedField) -> TokenStream {
+fn to_os_string(field: &ParsedField) -> TokenStream {
     if field.flatten() {
-        panic!("`to_default` does not make sense for a flattened field");
+        panic!("`to_os_string` does not make sense for a flattened field");
     }
 
     if field.subcommand() {
-        panic!("`to_default` does not make sense for a subcommand field");
+        panic!("`to_os_string` does not make sense for a subcommand field");
     }
 
     let field_ident = field.ident();
     let self_field = quote! {self.#field_ident};
     let span = field.span();
 
-    // If this had a custom to_default use that otherwise use ConfigOptDefaults
-    let to_default = if let Some(expr) = field.to_default() {
+    // If this had a custom to_os_string use that otherwise use ConfigOptArgToOsString
+    let to_os_string = if let Some(expr) = field.to_os_string() {
         quote! {
             Some(#expr(&value))
         }
     } else {
         quote! {
-            value.arg_default(arg_path)
+            value.arg_to_os_string(arg_path)
         }
     };
     // Code to join a Vec<OsString> into a OsString
@@ -52,7 +52,7 @@ fn to_default(field: &ParsedField) -> TokenStream {
         StructOptTy::Vec => quote_spanned! {span=>
             {
                 let vec = #self_field.iter()
-                    .map(|value| #to_default)
+                    .map(|value| #to_os_string)
                     .flatten()
                     .collect::<Vec<_>>();
                 #join_os_str_vec
@@ -61,19 +61,19 @@ fn to_default(field: &ParsedField) -> TokenStream {
         StructOptTy::Bool | StructOptTy::Option | StructOptTy::Other => quote_spanned! {span=>
             #self_field
                 .as_ref()
-                .and_then(|value| #to_default)
+                .and_then(|value| #to_os_string)
         },
         StructOptTy::OptionOption => quote_spanned! {span=>
             #self_field
                 .as_ref()
-                .and_then(|o| o.as_ref().and_then(|value| #to_default))
+                .and_then(|o| o.as_ref().and_then(|value| #to_os_string))
         },
         StructOptTy::OptionVec => quote_spanned! {span=>
             #self_field
                 .as_ref()
                 .and_then(|vec| {
                     let vec = vec.iter()
-                        .map(|value| #to_default)
+                        .map(|value| #to_os_string)
                         .flatten()
                         .collect::<Vec<_>>();
                     #join_os_str_vec
@@ -87,9 +87,9 @@ pub fn for_struct(fields: &[ParsedField]) -> TokenStream {
     let normal_fields = normal_fields
         .map(|field| {
             let arg_name = field.structopt_name();
-            let to_default = to_default(field);
+            let to_os_string = to_os_string(field);
             quote! {
-                #arg_name => #to_default,
+                #arg_name => #to_os_string,
             }
         })
         .collect::<TokenStream>();
@@ -99,7 +99,7 @@ pub fn for_struct(fields: &[ParsedField]) -> TokenStream {
             let field_ident = field.ident();
             let self_field = quote! {self.#field_ident};
             quote! {
-                if let Some(default) = #self_field.arg_default(full_arg_path) {
+                if let Some(default) = #self_field.arg_to_os_string(full_arg_path) {
                     return Some(default);
                 }
             }
@@ -114,7 +114,7 @@ pub fn for_struct(fields: &[ParsedField]) -> TokenStream {
                 "cmd3" => {
                     #self_field
                         .as_ref()
-                        .and_then(|value| value.arg_default(full_arg_path))
+                        .and_then(|value| value.arg_to_os_string(full_arg_path))
                 }
             }
         })
@@ -148,7 +148,7 @@ pub fn for_enum(variants: &[ParsedVariant]) -> TokenStream {
                 FieldType::Unnamed => {
                     quote_spanned! {span=>
                         #full_configopt_ident(value) if #structopt_name == arg_path[0] => {
-                            value.arg_default(&arg_path[1..])
+                            value.arg_to_os_string(&arg_path[1..])
                         }
                     }
                 }

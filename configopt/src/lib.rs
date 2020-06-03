@@ -1,5 +1,5 @@
 mod arena_trait;
-mod configopt_defaults_trait;
+mod configopt_arg_to_os_string;
 mod error;
 
 use arena_trait::Arena;
@@ -16,7 +16,7 @@ use structopt::{
     StructOpt,
 };
 
-pub use configopt_defaults_trait::ConfigOptDefaults;
+pub use configopt_arg_to_os_string::ConfigOptArgToOsString;
 pub use configopt_derive::{configopt_fields, ConfigOpt};
 pub use error::{Error, Result};
 
@@ -30,19 +30,19 @@ lazy_static! {
 fn set_defaults_impl<'a>(
     app: &mut App<'_, 'a>,
     arg_path: &mut Vec<String>,
-    defaults: &impl ConfigOptDefaults,
+    defaults: &impl ConfigOptArgToOsString,
     arena: &'a impl Arena<OsString>,
 ) {
     for arg in &mut app.p.opts {
         arg_path.push(String::from(arg.b.name));
-        if let Some(default) = defaults.arg_default(arg_path.as_slice()) {
+        if let Some(default) = defaults.arg_to_os_string(arg_path.as_slice()) {
             arg.v.default_val = Some(arena.alloc(default));
         }
         arg_path.pop();
     }
     for (_, arg) in &mut app.p.positionals {
         arg_path.push(String::from(arg.b.name));
-        if let Some(default) = defaults.arg_default(arg_path.as_slice()) {
+        if let Some(default) = defaults.arg_to_os_string(arg_path.as_slice()) {
             arg.v.default_val = Some(arena.alloc(default));
         }
         arg_path.pop();
@@ -56,13 +56,12 @@ fn set_defaults_impl<'a>(
 }
 
 /// Set the defaults for a `clap::App`
-pub fn set_defaults(app: &mut App<'_, 'static>, defaults: &impl ConfigOptDefaults) {
+pub fn set_defaults(app: &mut App<'_, 'static>, defaults: &impl ConfigOptArgToOsString) {
     let mut arg_path = Vec::new();
     let arena = &*DEFAULT_VALUE_STORE;
     set_defaults_impl(app, &mut arg_path, defaults, arena);
 }
 
-/// CODO
 fn filter_help<I>(iter: I) -> impl Iterator<Item = OsString>
 where
     I: IntoIterator,
@@ -107,7 +106,7 @@ pub trait IgnoreHelp: StructOpt + Sized {
 }
 
 /// CODO
-pub trait ConfigOptType: ConfigOptDefaults + StructOpt {
+pub trait ConfigOptType: ConfigOptArgToOsString + StructOpt {
     /// If the `--generate-config` flag is set, return the current configuration.
     fn maybe_config_file(&self) -> Option<String>;
 
@@ -139,7 +138,7 @@ pub trait ConfigOpt: Sized + StructOpt {
     /// Set argument default values then get the struct from the command line arguments.
     ///
     /// Print the error message and quit the program in case of failure.
-    fn from_args_with_defaults(defaults: &impl ConfigOptDefaults) -> Self {
+    fn from_args_with_defaults(defaults: &impl ConfigOptArgToOsString) -> Self {
         Self::try_from_args_with_defaults(defaults).unwrap_or_else(|e| e.exit())
     }
 
@@ -148,14 +147,14 @@ pub trait ConfigOpt: Sized + StructOpt {
     /// Returns a `configopt::Error` in case of failure. This does not exit in the case of --help,
     /// --version, or --generated-config, to achieve that behavior you must call `exit()` on the
     /// error value.
-    fn try_from_args_with_defaults(defaults: &impl ConfigOptDefaults) -> ClapResult<Self> {
+    fn try_from_args_with_defaults(defaults: &impl ConfigOptArgToOsString) -> ClapResult<Self> {
         Self::try_from_iter_with_defaults(env::args(), defaults)
     }
 
     /// Set argument default values then get the struct from any iterator such as a Vec of your making.
     ///
     /// Print the error message and quit the program in case of failure.
-    fn from_iter_with_defaults<I>(iter: I, defaults: &impl ConfigOptDefaults) -> Self
+    fn from_iter_with_defaults<I>(iter: I, defaults: &impl ConfigOptArgToOsString) -> Self
     where
         I: IntoIterator,
         I::Item: Into<OsString> + Clone,
@@ -170,7 +169,7 @@ pub trait ConfigOpt: Sized + StructOpt {
     /// call .exit() on the error value.
     fn try_from_iter_with_defaults<I>(
         iter: I,
-        defaults: &impl ConfigOptDefaults,
+        defaults: &impl ConfigOptArgToOsString,
     ) -> ClapResult<Self>
     where
         I: IntoIterator,
@@ -252,6 +251,23 @@ pub trait ConfigOpt: Sized + StructOpt {
                 Err(Error::ExpectedError(e))
             }
         }
+    }
+
+    /// CODO
+    fn get_help(&self) -> String {
+        let mut help = Vec::new();
+        let app = Self::clap();
+        app.write_help(&mut help).expect("failed to write to help");
+        String::from_utf8_lossy(&help).to_string()
+    }
+
+    /// CODO
+    fn get_long_help(&self) -> String {
+        let mut help = Vec::new();
+        let mut app = Self::clap();
+        app.write_long_help(&mut help)
+            .expect("failed to write to long help");
+        String::from_utf8_lossy(&help).to_string()
     }
 
     #[doc(hidden)]
