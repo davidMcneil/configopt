@@ -11,7 +11,7 @@ pub fn take(fields: &[ParsedField], other: &Ident) -> TokenStream {
             let span = field.span();
             let self_field = quote! {self.#field_ident};
             let other_field = quote! {#other.#field_ident};
-            if field.flatten() {
+            if field.structopt_flatten() {
                 quote_spanned! {span=>
                     #self_field.take(&mut #other_field);
                 }
@@ -47,7 +47,7 @@ pub fn patch(fields: &[ParsedField], other: &Ident) -> TokenStream {
             let span = field.span();
             let self_field = quote! {self.#field_ident};
             let other_field = quote! {#other.#field_ident};
-            if field.flatten() {
+            if field.structopt_flatten() {
                 quote_spanned! {span=>
                     #self_field.patch(&mut #other_field);
                 }
@@ -83,7 +83,7 @@ pub fn take_for(fields: &[ParsedField], other: &Ident) -> TokenStream {
             let span = field.span();
             let self_field = quote! {self.#field_ident};
             let other_field = quote! {#other.#field_ident};
-            if field.flatten() {
+            if field.structopt_flatten() {
                 quote_spanned! {span=>
                     #self_field.take_for(&mut #other_field);
                 }
@@ -148,7 +148,7 @@ pub fn take_for(fields: &[ParsedField], other: &Ident) -> TokenStream {
 //     let field_tokens = fields.iter().map(|field| {
 //         let ident = field.ident();
 //         let span = field.span();
-//         if field.flatten() {
+//         if field.structopt_flatten() {
 //             quote_spanned! {span=>
 //                 self.#ident.as_ref().map_or(false, |val| val.is_complete())
 //             }
@@ -167,7 +167,7 @@ pub fn take_for(fields: &[ParsedField], other: &Ident) -> TokenStream {
 //     let field_tokens = fields.iter().map(|field| {
 //         let ident = field.ident();
 //         let span = field.span();
-//         if field.flatten() {
+//         if field.structopt_flatten() {
 //             quote_spanned! {span=>
 //                 #ident: Some(other.#ident.into()),
 //             }
@@ -189,7 +189,7 @@ pub fn take_for(fields: &[ParsedField], other: &Ident) -> TokenStream {
 //         let ident = field.ident();
 //         let span = field.span();
 //         // We check upfront if the type `is_complete` so all these `unwrap`'s are ok
-//         if field.flatten() {
+//         if field.structopt_flatten() {
 //             quote_spanned! {span=>
 //                 #ident: ::std::convert::TryInto::try_into(partial.#ident.unwrap()).unwrap(),
 //             }

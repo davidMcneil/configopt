@@ -11,13 +11,11 @@ pub fn for_struct(fields: &[ParsedField]) -> TokenStream {
         let serde_name = field.serde_name();
         if field.subcommand() {
             quote! {}
-        } else if field.flatten() {
+        } else if field.serde_flatten() {
             quote_spanned! {span=>
-                // TODO: Check if this is `serde` flatten and not just `structopt` flatten
-                // let mut new_prefix = serde_prefix.to_vec();
-                // new_prefix.push(String::from(#serde_name));
-                // result = format!("{}{}", result, #self_field.toml_config_with_prefix(&new_prefix));
-                result = format!("{}{}", result, #self_field.toml_config_with_prefix(&serde_prefix));
+                let mut new_prefix = serde_prefix.to_vec();
+                new_prefix.push(String::from(#serde_name));
+                result = format!("{}{}", result, #self_field.toml_config_with_prefix(&new_prefix));
             }
         }  else {
             let structopt_name = field.structopt_name();

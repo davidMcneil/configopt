@@ -1,10 +1,12 @@
 mod configopt_parser;
+mod serde_parser;
 mod structopt_parser;
 
 use configopt_parser::ConfigOptAttr;
 use heck::{CamelCase, KebabCase, MixedCase, ShoutySnakeCase, SnakeCase};
 use proc_macro2::{Span, TokenStream};
 use proc_macro_roids::IdentExt;
+use serde_parser::SerdeAttr;
 use std::{convert::Infallible, str::FromStr};
 use structopt_parser::StructOptAttr;
 use syn::{parse_quote, spanned::Spanned, Expr, Field, Fields, Ident, Type, Variant};
@@ -81,7 +83,8 @@ pub struct ParsedField {
     structopt_ty: StructOptTy,
     configopt_inner_ty: Ident,
     span: Span,
-    flatten: bool,
+    structopt_flatten: bool,
+    serde_flatten: bool,
     subcommand: bool,
     structopt_rename: CasingStyle,
     structopt_name: String,
@@ -96,6 +99,7 @@ impl ParsedField {
         let mut_ty = &mut field.ty.clone();
         let inner_ty = inner_ty(&mut mut_ty.clone()).clone();
         let structopt_attrs = structopt_parser::parse_attrs(&field.attrs);
+        let serde_attrs = serde_parser::parse_attrs(&field.attrs);
         let configopt_attrs = configopt_parser::parse_attrs(&field.attrs);
 
         let structopt_name = structopt_attrs
@@ -116,8 +120,12 @@ impl ParsedField {
             structopt_rename,
             structopt_name,
             serde_name,
-            flatten: structopt_attrs.iter().any(|a| match a {
+            structopt_flatten: structopt_attrs.iter().any(|a| match a {
                 StructOptAttr::Flatten => true,
+                _ => false,
+            }),
+            serde_flatten: serde_attrs.iter().any(|a| match a {
+                SerdeAttr::Flatten => true,
                 _ => false,
             }),
             subcommand: structopt_attrs.iter().any(|a| match a {
@@ -143,8 +151,12 @@ impl ParsedField {
         &self.configopt_inner_ty
     }
 
-    pub fn flatten(&self) -> bool {
-        self.flatten
+    pub fn structopt_flatten(&self) -> bool {
+        self.structopt_flatten
+    }
+
+    pub fn serde_flatten(&self) -> bool {
+        self.serde_flatten
     }
 
     pub fn subcommand(&self) -> bool {

@@ -377,7 +377,7 @@ fn convert_and_parse_field(
     let ty = &mut field.ty;
 
     // If the field is flattened or a subcommand, modify the type with the configopt type prefix
-    if parsed_field.flatten() || parsed_field.subcommand() {
+    if parsed_field.structopt_flatten() || parsed_field.subcommand() {
         *parse::inner_ty(ty) = parsed_field.configopt_inner_ty().clone();
     }
 
@@ -388,7 +388,7 @@ fn convert_and_parse_field(
     if let StructOptTy::Bool | StructOptTy::Other = parsed_field.structopt_ty() {
         // If it was a flattened field all of its fields will be optional so it does not need to
         // be wrapped in an `Option`
-        if !parsed_field.flatten() {
+        if !parsed_field.structopt_flatten() {
             field.ty = parse_quote!(Option<#ty>);
         }
         // If this field was a `bool` we need to add a default of `true` now that it is wrapped in

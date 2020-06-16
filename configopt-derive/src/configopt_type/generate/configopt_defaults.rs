@@ -4,7 +4,7 @@ use quote::{quote, quote_spanned};
 use syn::spanned::Spanned;
 
 fn to_os_string(field: &ParsedField) -> TokenStream {
-    if field.flatten() {
+    if field.structopt_flatten() {
         panic!("`to_os_string` does not make sense for a flattened field");
     }
 
@@ -83,7 +83,9 @@ fn to_os_string(field: &ParsedField) -> TokenStream {
 }
 
 pub fn for_struct(fields: &[ParsedField]) -> TokenStream {
-    let normal_fields = fields.iter().filter(|f| !f.flatten() && !f.subcommand());
+    let normal_fields = fields
+        .iter()
+        .filter(|f| !f.structopt_flatten() && !f.subcommand());
     let normal_fields = normal_fields
         .map(|field| {
             let arg_name = field.structopt_name();
@@ -93,7 +95,7 @@ pub fn for_struct(fields: &[ParsedField]) -> TokenStream {
             }
         })
         .collect::<TokenStream>();
-    let flat_fields = fields.iter().filter(|f| f.flatten());
+    let flat_fields = fields.iter().filter(|f| f.structopt_flatten());
     let flat_fields = flat_fields
         .map(|field| {
             let field_ident = field.ident();
