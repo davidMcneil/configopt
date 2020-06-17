@@ -476,7 +476,7 @@ fn test_configopt_from_file_and_defaults() {
 }
 
 #[test]
-fn test_setting_an_optional_field() {
+fn test_take_for() {
     use configopt::ConfigOpt;
 
     let mut c = ConfigOptMyStruct {
@@ -496,4 +496,51 @@ fn test_setting_an_optional_field() {
     assert!(s.optional.is_none());
     c.take_for(&mut s);
     assert_eq!(Some(String::from("configopt_optional")), s.optional);
+}
+
+#[test]
+fn test_patch_for() {
+    use configopt::ConfigOpt;
+
+    let mut c = ConfigOptMyStruct {
+        maybe: None,
+        numbers: Vec::new(),
+        optional: Some(String::from("optional_from_configopt")),
+        not_optional: Some(String::from("not_optional_from_configopt")),
+        double_optional: None,
+        optional_vec: None,
+        path: Some(PathBuf::from("/some/path")),
+        cmd: None,
+        config_files: Vec::new(),
+        generate_config: None,
+    };
+
+    let mut s = MyStruct::try_from_iter_with_defaults(
+        &[
+            "app",
+            "--optional=optional_from_cli",
+            "--notOptional=not_optional_from_cli",
+            "cmd3",
+            "--field-a=from_cli",
+        ],
+        &c,
+    )
+    .unwrap();
+    assert!(s.optional.is_some());
+    c.patch_for(&mut s);
+    assert_eq!(Some(String::from("optional_from_cli")), s.optional);
+
+    let mut s = MyStruct::try_from_iter_with_defaults(
+        &[
+            "app",
+            "--notOptional=not_optional_from_cli",
+            "cmd3",
+            "--field-a=from_cli",
+        ],
+        &c,
+    )
+    .unwrap();
+    assert!(s.optional.is_none());
+    c.patch_for(&mut s);
+    assert_eq!(Some(String::from("optional_from_configopt")), s.optional);
 }

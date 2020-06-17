@@ -63,7 +63,7 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Error::ConfigGenerated(config) => write!(f, "{}", config),
-            Self::ConfigFile(path, e) => write!(f, "Failed to parse config file '{}', err: {}", path.to_string_lossy(), e),
+            Self::ConfigFile(path, e) => write!(f, "Failed to parse file '{}', err: {}", path.to_string_lossy(), e),
             Error::ExpectedError(e) => write!(f, "The `configopt` app generated an error, but the actual app did not. This should never happen. err: {}", e),
             Error::Clap(e) => write!(f, "{}", e),
         }

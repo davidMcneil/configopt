@@ -37,18 +37,9 @@ pub fn patch_for_struct(parsed: &[ParsedField], configopt_ident: &Ident) -> Toke
     if has_config_fields {
         quote! {
             use ::std::convert::TryFrom;
+            let mut from_default_config_files = #configopt_ident::from_default_config_files()?;
             let mut from_config_files = #configopt_ident::try_from(self.config_files.as_slice())?;
-            for config_file in #configopt_ident::default_config_files() {
-                match #configopt_ident::try_from(config_file.as_path()) {
-                    Ok(mut from_default_config_file) => {
-                        from_config_files.patch(&mut from_default_config_file);
-                    },
-                    Err(e) if e.config_file_not_found() => {
-                        // If we could not find the config file do nothing.
-                    },
-                    Err(e) => return Err(e),
-                }
-            }
+            from_config_files.patch(&mut from_default_config_files);
             self.patch(&mut from_config_files);
             #patch_subcommands
             Ok(self)

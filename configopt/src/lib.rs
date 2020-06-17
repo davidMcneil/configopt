@@ -5,9 +5,12 @@ mod error;
 use arena_trait::Arena;
 use colosseum::{sync::Arena as SyncArena, unsync::Arena as UnsyncArena};
 use lazy_static::lazy_static;
+use serde::de::DeserializeOwned;
+use std::path::Path;
 use std::{
     env,
     ffi::OsString,
+    fs,
     io::{self, Write},
     process,
 };
@@ -53,6 +56,14 @@ fn set_defaults_impl<'a>(
         set_defaults_impl(app, arg_path, defaults, arena);
         arg_path.pop();
     }
+}
+
+/// CODO
+pub fn from_toml_file<T: DeserializeOwned>(path: impl AsRef<Path>) -> Result<T> {
+    let path = path.as_ref();
+    let contents =
+        fs::read_to_string(path).map_err(|e| Error::ConfigFile(path.to_path_buf(), e))?;
+    toml::from_str(&contents).map_err(|e| Error::ConfigFile(path.to_path_buf(), e.into()))
 }
 
 /// Set the defaults for a `clap::App`
@@ -239,6 +250,7 @@ pub trait ConfigOpt: Sized + StructOpt {
                 // Take into account any values from config files by taking the values from the
                 // configopt type. This is needed for types that do not always set their value if
                 // a default is set (eg Option<T>)
+                // TODO (DM): This should be patch?
                 <Self as ConfigOpt>::take(&mut s, &mut configopt);
                 Ok(s)
             }

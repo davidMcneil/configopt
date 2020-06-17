@@ -24,10 +24,8 @@ impl Parse for SerdeAttr {
 
             if input.peek(LitStr) {
                 input.parse::<LitStr>()?;
-            } else {
-                if let Err(e) = input.parse::<Expr>() {
-                    panic!("`configopt` parsing `serde` expected `string literal` or `expression` after `=`, err: {}", e)
-                }
+            } else if let Err(e) = input.parse::<Expr>() {
+                panic!("`configopt` parsing `serde` expected `string literal` or `expression` after `=`, err: {}", e)
             }
             Ok(SerdeAttr::Unknown)
         } else if input.peek(syn::token::Paren) {

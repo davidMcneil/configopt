@@ -145,14 +145,16 @@ impl ConfigOptConstruct {
         let configopt_ident = parse::configopt_ident(ident);
         match self {
             Self::Struct(_, default_config_file, parsed_fields) => {
-                let configopt_take = generate::core::take(&parsed_fields, &other);
-                let configopt_patch = generate::core::patch(&parsed_fields, &other);
-                let configopt_take_for = generate::core::take_for(&parsed_fields, &other);
-                // let configopt_clear = clear(&parsed_fields);
-                // let configopt_is_empty = is_empty(&parsed_fields);
-                // let configopt_is_complete = is_complete(&parsed_fields);
-                // let configopt_from = from(&parsed_fields);
-                // let configopt_try_from = try_from(&parsed_fields);
+                let configopt_take = generate::core::take_for_struct(&parsed_fields, &other);
+                let configopt_patch = generate::core::patch_for_struct(&parsed_fields, &other);
+                let configopt_take_for =
+                    generate::core::take_for_for_struct(&parsed_fields, &other);
+                let configopt_patch_for =
+                    generate::core::patch_for_for_struct(&parsed_fields, &other);
+                let configopt_is_empty = generate::core::is_empty_for_struct(&parsed_fields);
+                let configopt_is_complete = generate::core::is_complete_for_struct(&parsed_fields);
+                let configopt_from = generate::core::from_for_struct(&parsed_fields, &other);
+                let configopt_try_from = generate::core::try_from_for_struct(&parsed_fields);
                 let default_config_files =
                     generate::default_config_files::generate(default_config_file.as_deref());
                 let handle_config_files_generate =
@@ -183,20 +185,20 @@ impl ConfigOptConstruct {
                             #configopt_take_for
                         }
 
-                    //     /// Clear all fields from `self`
-                    //     pub fn clear(&mut self) {
-                    //         #configopt_clear
-                    //     }
+                        /// For each field in `other` if it is `None`, take the value from `self` and set it in `other`
+                        pub fn patch_for(&mut self, other: &mut #ident) {
+                            #configopt_patch_for
+                        }
 
-                    //     /// Check if all fields of `self` are `None`
-                    //     pub fn is_empty(&self) -> bool {
-                    //         #configopt_is_empty
-                    //     }
+                        /// Check if all fields of `self` are `None`
+                        pub fn is_empty(&self) -> bool {
+                            #configopt_is_empty
+                        }
 
-                    //     /// Check if all fields of `self` are `Some` applied recursively
-                    //     pub fn is_complete(&self) -> bool {
-                    //         #configopt_is_complete
-                    //     }
+                        /// Check if all fields of `self` are `Some` applied recursively
+                        pub fn is_complete(&self) -> bool {
+                            #configopt_is_complete
+                        }
 
                         #default_config_files
                     }
@@ -221,11 +223,7 @@ impl ConfigOptConstruct {
                         type Error = ::configopt::Error;
 
                         fn try_from(path: &::std::path::Path) -> ::std::result::Result<Self, Self::Error> {
-                            let contents = ::std::fs::read_to_string(path)
-                                .map_err(|e| Self::Error::ConfigFile(path.to_path_buf(), e))?;
-                            let s = ::toml::from_str(&contents)
-                                .map_err(|e| Self::Error::ConfigFile(path.to_path_buf(), e.into()))?;
-                            Ok(s)
+                            ::configopt::from_toml_file(path)
                         }
                     }
 
@@ -236,8 +234,15 @@ impl ConfigOptConstruct {
                         fn try_from(paths: &[T]) -> ::std::result::Result<Self, Self::Error> {
                             let mut result = #configopt_ident::default();
                             for path in paths {
-                                let mut other = #configopt_ident::try_from(path.as_ref())?;
-                                result.take(&mut other);
+                                match #configopt_ident::try_from(path.as_ref()) {
+                                    Ok(mut from_default_config_file) => {
+                                        result.take(&mut from_default_config_file);
+                                    },
+                                    Err(e) if e.config_file_not_found() => {
+                                        // If we could not find the config file do nothing.
+                                    },
+                                    Err(e) => return Err(e),
+                                }
                             }
                             Ok(result)
                         }
@@ -286,14 +291,60 @@ impl ConfigOptConstruct {
                 }
             }
             Self::Enum(_, parsed_variants) => {
+                let configopt_is_complete = generate::core::is_complete_for_enum(&parsed_variants);
+                let configopt_from = generate::core::from_for_enum(&parsed_variants);
+                let configopt_try_from = generate::core::try_from_for_enum(&parsed_variants);
                 let handle_config_files_generate =
                     generate::handle_config_files::generate_for_enum(parsed_variants);
                 let handle_config_files_patch =
                     generate::handle_config_files::patch_for_enum(parsed_variants);
                 let configopt_defaults_variant =
                     generate::configopt_defaults::for_enum(&parsed_variants);
-                let configopt_take = generate::core::take_enum(&parsed_variants);
+                let configopt_take = generate::core::take_for_enum(&parsed_variants);
+
                 quote! {
+
+                    #lints
+                    impl #configopt_ident {
+                        /// Check if all fields of `self` are `Some` applied recursively
+                        pub fn is_complete(&self) -> bool {
+                            match self {
+                                #configopt_is_complete
+                                _ => {
+                                    panic!("TODO: `is_complete` for enum is not fully implemented");
+                                }
+                            }
+                        }
+                    }
+
+                    // #lints
+                    // impl ::std::convert::From<#ident> for #configopt_ident {
+                    //     fn from(other: #ident) -> Self {
+                    //         match other {
+                    //             #configopt_from
+                    //             _ => {
+                    //                 panic!("TODO: `from` for enum is not fully implemented");
+                    //             }
+                    //         }
+                    //     }
+                    // }
+
+                    // #lints
+                    // impl ::std::convert::TryFrom<#configopt_ident> for #ident {
+                    //     type Error = #configopt_ident;
+                    //     fn try_from(configopt: #configopt_ident) -> Result<Self, Self::Error> {
+                    //         if !configopt.is_complete() {
+                    //             return Err(configopt);
+                    //         }
+                    //         match other {
+                    //             #configopt_try_from
+                    //             _ => {
+                    //                 panic!("TODO: `try_from` for enum is not fully implemented");
+                    //             }
+                    //         }
+                    //     }
+                    // }
+
                     #lints
                     impl ::configopt::ConfigOptArgToOsString for #configopt_ident {
                         fn arg_to_os_string(&self, arg_path: &[String]) -> Option<::std::ffi::OsString> {
@@ -344,7 +395,6 @@ impl ConfigOptConstruct {
                             }
                         }
                     }
-
                 }
             }
         }
