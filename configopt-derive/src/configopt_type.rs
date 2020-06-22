@@ -153,6 +153,8 @@ impl ConfigOptConstruct {
                     generate::core::patch_for_for_struct(&parsed_fields, &other);
                 let configopt_is_empty = generate::core::is_empty_for_struct(&parsed_fields);
                 let configopt_is_complete = generate::core::is_complete_for_struct(&parsed_fields);
+                let configopt_is_convertible =
+                    generate::core::is_convertible_for_struct(&parsed_fields);
                 let configopt_from = generate::core::from_for_struct(&parsed_fields, &other);
                 let configopt_try_from = generate::core::try_from_for_struct(&parsed_fields);
                 let default_config_files =
@@ -200,23 +202,33 @@ impl ConfigOptConstruct {
                             #configopt_is_complete
                         }
 
+                        /// Check if `self` can be converted into a full version
+                        pub fn is_convertible(&self) -> bool {
+                            #configopt_is_convertible
+                        }
+
                         #default_config_files
                     }
 
-                    // #lints
-                    // impl ::std::convert::From<#ident> for #configopt_ident {
-                    //     fn from(other: #ident) -> Self {
-                    //         #configopt_from
-                    //     }
-                    // }
+                    #lints
+                    impl ::std::convert::From<#ident> for #configopt_ident {
+                        fn from(other: #ident) -> Self {
+                            #configopt_from
+                        }
+                    }
 
-                    // #lints
-                    // impl ::std::convert::TryFrom<#configopt_ident> for #ident {
-                    //     type Error = #configopt_ident;
-                    //     fn try_from(configopt: #configopt_ident) -> Result<Self, Self::Error> {
-                    //         #configopt_try_from
-                    //     }
-                    // }
+                    #lints
+                    impl ::std::convert::TryFrom<#configopt_ident> for #ident {
+                        type Error = #configopt_ident;
+                        fn try_from(configopt: #configopt_ident) -> Result<Self, Self::Error> {
+                            use ::std::convert::TryInto;
+
+                            if !configopt.is_convertible() {
+                                return Err(configopt);
+                            }
+                            #configopt_try_from
+                        }
+                    }
 
                     #lints
                     impl ::std::convert::TryFrom<&::std::path::Path> for #configopt_ident {
@@ -292,6 +304,8 @@ impl ConfigOptConstruct {
             }
             Self::Enum(_, parsed_variants) => {
                 let configopt_is_complete = generate::core::is_complete_for_enum(&parsed_variants);
+                let configopt_is_convertible =
+                    generate::core::is_convertible_for_enum(&parsed_variants);
                 let configopt_from = generate::core::from_for_enum(&parsed_variants);
                 let configopt_try_from = generate::core::try_from_for_enum(&parsed_variants);
                 let handle_config_files_generate =
@@ -315,35 +329,47 @@ impl ConfigOptConstruct {
                                 }
                             }
                         }
+
+                        /// Check if `self` can be converted into a full version
+                        pub fn is_convertible(&self) -> bool {
+                            match self {
+                                #configopt_is_convertible
+                                _ => {
+                                    panic!("TODO: `is_convertible` for enum is not fully implemented");
+                                }
+                            }
+                        }
                     }
 
-                    // #lints
-                    // impl ::std::convert::From<#ident> for #configopt_ident {
-                    //     fn from(other: #ident) -> Self {
-                    //         match other {
-                    //             #configopt_from
-                    //             _ => {
-                    //                 panic!("TODO: `from` for enum is not fully implemented");
-                    //             }
-                    //         }
-                    //     }
-                    // }
+                    #lints
+                    impl ::std::convert::From<#ident> for #configopt_ident {
+                        fn from(other: #ident) -> Self {
+                            match other {
+                                #configopt_from
+                                _ => {
+                                    panic!("TODO: `from` for enum is not fully implemented");
+                                }
+                            }
+                        }
+                    }
 
-                    // #lints
-                    // impl ::std::convert::TryFrom<#configopt_ident> for #ident {
-                    //     type Error = #configopt_ident;
-                    //     fn try_from(configopt: #configopt_ident) -> Result<Self, Self::Error> {
-                    //         if !configopt.is_complete() {
-                    //             return Err(configopt);
-                    //         }
-                    //         match other {
-                    //             #configopt_try_from
-                    //             _ => {
-                    //                 panic!("TODO: `try_from` for enum is not fully implemented");
-                    //             }
-                    //         }
-                    //     }
-                    // }
+                    #lints
+                    impl ::std::convert::TryFrom<#configopt_ident> for #ident {
+                        type Error = #configopt_ident;
+                        fn try_from(configopt: #configopt_ident) -> Result<Self, Self::Error> {
+                            use ::std::convert::TryInto;
+
+                            if !configopt.is_convertible() {
+                                return Err(configopt);
+                            }
+                            match configopt {
+                                #configopt_try_from
+                                _ => {
+                                    panic!("TODO: `try_from` for enum is not fully implemented");
+                                }
+                            }
+                        }
+                    }
 
                     #lints
                     impl ::configopt::ConfigOptArgToOsString for #configopt_ident {

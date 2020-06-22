@@ -86,6 +86,7 @@ pub fn patch_for_enum(variants: &[ParsedVariant]) -> TokenStream {
                 }
             }
             FieldType::Named | FieldType::Unit => {
+                // TODO
                 quote! {}
             }
         })

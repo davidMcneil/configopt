@@ -544,3 +544,188 @@ fn test_patch_for() {
     c.patch_for(&mut s);
     assert_eq!(Some(String::from("optional_from_configopt")), s.optional);
 }
+
+#[test]
+fn test_from() {
+    let m = MyStruct {
+        maybe: true,
+        numbers: vec![1, 2, 3],
+        optional: None,
+        not_optional: String::from("testing123"),
+        double_optional: Some(Some(5.6)),
+        optional_vec: None,
+        path: PathBuf::from("/test/path"),
+        cmd: MyEnum::Cmd1,
+        config_files: Vec::new(),
+        generate_config: false,
+    };
+    let c1 = ConfigOptMyStruct::from(m);
+    let c2 = ConfigOptMyStruct {
+        maybe: Some(true),
+        numbers: vec![1, 2, 3],
+        optional: None,
+        not_optional: Some(String::from("testing123")),
+        double_optional: Some(Some(5.6)),
+        optional_vec: None,
+        path: Some(PathBuf::from("/test/path")),
+        cmd: Some(ConfigOptMyEnum::Cmd1),
+        config_files: Vec::new(),
+        generate_config: Some(false),
+    };
+    assert_eq!(c1, c2);
+
+    let f = FlatStruct {
+        flat_optional: None,
+        flat_maybe: true,
+        flat_numbers: vec![4, 5, 6],
+    };
+    let a = AnotherStruct {
+        field_a: String::from("another_struct_test"),
+        field_b: None,
+        flat_struct: f,
+        config_files: Vec::new(),
+        generate_config: false,
+    };
+    let f = MyStruct {
+        maybe: true,
+        numbers: vec![1, 2, 3],
+        optional: None,
+        not_optional: String::from("testing123"),
+        double_optional: Some(Some(5.6)),
+        optional_vec: None,
+        path: PathBuf::from("/test/path"),
+        cmd: MyEnum::Cmd3(a),
+        config_files: Vec::new(),
+        generate_config: false,
+    };
+    let c1 = ConfigOptMyStruct::from(f);
+    let f = ConfigOptFlatStruct {
+        flat_optional: None,
+        flat_maybe: Some(true),
+        flat_numbers: vec![4, 5, 6],
+    };
+    let a = ConfigOptAnotherStruct {
+        field_a: Some(String::from("another_struct_test")),
+        field_b: None,
+        flat_struct: f,
+        config_files: Vec::new(),
+        generate_config: Some(false),
+    };
+    let c2 = ConfigOptMyStruct {
+        maybe: Some(true),
+        numbers: vec![1, 2, 3],
+        optional: None,
+        not_optional: Some(String::from("testing123")),
+        double_optional: Some(Some(5.6)),
+        optional_vec: None,
+        path: Some(PathBuf::from("/test/path")),
+        cmd: Some(ConfigOptMyEnum::Cmd3(a)),
+        config_files: Vec::new(),
+        generate_config: Some(false),
+    };
+    assert_eq!(c1, c2);
+}
+
+#[test]
+fn test_try_from() {
+    use std::convert::TryFrom;
+
+    let mut c = ConfigOptMyStruct {
+        maybe: Some(true),
+        numbers: vec![1, 2, 3],
+        optional: None,
+        not_optional: None,
+        double_optional: Some(Some(5.6)),
+        optional_vec: None,
+        path: Some(PathBuf::from("/test/path")),
+        cmd: Some(ConfigOptMyEnum::Cmd1),
+        config_files: Vec::new(),
+        generate_config: None,
+    };
+    assert!(!c.is_convertible());
+    c.not_optional = Some(String::from("testing123"));
+    c.cmd = None;
+    assert!(!c.is_convertible());
+    c.cmd = Some(ConfigOptMyEnum::Cmd1);
+    assert!(c.is_convertible());
+    let m1 = MyStruct::try_from(c).unwrap();
+    let m2 = MyStruct {
+        maybe: true,
+        numbers: vec![1, 2, 3],
+        optional: None,
+        not_optional: String::from("testing123"),
+        double_optional: Some(Some(5.6)),
+        optional_vec: None,
+        path: PathBuf::from("/test/path"),
+        cmd: MyEnum::Cmd1,
+        config_files: Vec::new(),
+        generate_config: false,
+    };
+    assert_eq!(m1, m2);
+
+    let f = ConfigOptFlatStruct {
+        flat_optional: None,
+        flat_maybe: None,
+        flat_numbers: vec![4, 5, 6],
+    };
+    let a = ConfigOptAnotherStruct {
+        field_a: None,
+        field_b: None,
+        flat_struct: f,
+        config_files: Vec::new(),
+        generate_config: Some(false),
+    };
+    let mut c = ConfigOptMyStruct {
+        maybe: Some(true),
+        numbers: vec![1, 2, 3],
+        optional: None,
+        not_optional: Some(String::from("testing123")),
+        double_optional: Some(Some(5.6)),
+        optional_vec: None,
+        path: Some(PathBuf::from("/test/path")),
+        cmd: Some(ConfigOptMyEnum::Cmd3(a)),
+        config_files: Vec::new(),
+        generate_config: None,
+    };
+    assert!(!c.is_convertible());
+    let f = ConfigOptFlatStruct {
+        flat_optional: None,
+        flat_maybe: None,
+        flat_numbers: vec![4, 5, 6],
+    };
+    let a = ConfigOptAnotherStruct {
+        field_a: Some(String::from("another_struct_test")),
+        field_b: None,
+        flat_struct: f,
+        config_files: Vec::new(),
+        generate_config: Some(false),
+    };
+    c.cmd = Some(ConfigOptMyEnum::Cmd3(a));
+    assert!(c.is_convertible());
+    let m1 = MyStruct::try_from(c).unwrap();
+    let f = FlatStruct {
+        flat_optional: None,
+        flat_maybe: false,
+        flat_numbers: vec![4, 5, 6],
+    };
+    let a = AnotherStruct {
+        field_a: String::from("another_struct_test"),
+        field_b: None,
+        flat_struct: f,
+        config_files: Vec::new(),
+        generate_config: false,
+    };
+    let m2 = MyStruct {
+        maybe: true,
+        numbers: vec![1, 2, 3],
+        optional: None,
+        not_optional: String::from("testing123"),
+        double_optional: Some(Some(5.6)),
+        optional_vec: None,
+        path: PathBuf::from("/test/path"),
+        cmd: MyEnum::Cmd3(a),
+        config_files: Vec::new(),
+        generate_config: false,
+    };
+    assert_eq!(m1, m2);
+}

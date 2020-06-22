@@ -174,7 +174,7 @@ pub fn is_empty_for_struct(fields: &[ParsedField]) -> TokenStream {
             match field.structopt_ty() {
                 StructOptTy::Vec => quote_spanned! {span=>
                     // TODO: how to handle vectors
-                    // #self_field.is_empty()
+                    #self_field.is_empty()
                 },
                 _ => {
                     quote_spanned! {span=>
@@ -184,7 +184,6 @@ pub fn is_empty_for_struct(fields: &[ParsedField]) -> TokenStream {
             }
         }
     });
-    let field_tokens = field_tokens.filter(|p| !p.is_empty());
     quote! {
         #(#field_tokens)&&*
     }
@@ -207,7 +206,7 @@ pub fn is_complete_for_struct(fields: &[ParsedField]) -> TokenStream {
             match field.structopt_ty() {
                 StructOptTy::Vec => quote_spanned! {span=>
                     // TODO: how to handle vectors
-                    // !#self_field.is_empty()
+                    true
                 },
                 _ => {
                     quote_spanned! {span=>
@@ -217,7 +216,39 @@ pub fn is_complete_for_struct(fields: &[ParsedField]) -> TokenStream {
             }
         }
     });
-    let field_tokens = field_tokens.filter(|p| !p.is_empty());
+    quote! {
+        #(#field_tokens)&&*
+    }
+}
+
+pub fn is_convertible_for_struct(fields: &[ParsedField]) -> TokenStream {
+    let field_tokens = fields.iter().map(|field| {
+        let field_ident = field.ident();
+        let span = field.span();
+        let self_field = quote! {self.#field_ident};
+        if field.structopt_flatten() {
+            quote_spanned! {span=>
+                #self_field.is_convertible()
+            }
+        } else if field.subcommand() {
+            quote_spanned! {span=>
+                #self_field.as_ref().map_or(false, |val| val.is_convertible())
+            }
+        } else {
+            match field.structopt_ty() {
+                // We do not include `StructOptTy::Bool` here. If there is no value set for the
+                // bool we default the value to `false`.
+                StructOptTy::Other => quote_spanned! {span=>
+                    #self_field.is_some()
+                },
+                _ => {
+                    quote_spanned! {span=>
+                        true
+                    }
+                }
+            }
+        }
+    });
     quote! {
         #(#field_tokens)&&*
     }
@@ -261,18 +292,21 @@ pub fn try_from_for_struct(fields: &[ParsedField]) -> TokenStream {
         let field_ident = field.ident();
         let span = field.span();
         let self_field = quote! {configopt.#field_ident};
-        // We check upfront if the type `is_complete` so all these `unwrap`'s are ok
+        // We check upfront if the type `is_convertible` so all these `unwrap`'s are ok
         if field.structopt_flatten() {
             quote_spanned! {span=>
-                #field_ident: ::std::convert::TryInto::try_into(#self_field).unwrap(),
+                #field_ident: #self_field.try_into().ok().unwrap(),
             }
         } else if field.subcommand() {
             quote_spanned! {span=>
-                #field_ident: ::std::convert::TryInto::try_into(#self_field.unwrap()).unwrap(),
+                #field_ident: #self_field.unwrap().try_into().ok().unwrap(),
             }
         } else {
             match field.structopt_ty() {
-                StructOptTy::Bool | StructOptTy::Other => quote_spanned! {span=>
+                StructOptTy::Bool => quote_spanned! {span=>
+                    #field_ident: #self_field.unwrap_or_default(),
+                },
+                StructOptTy::Other => quote_spanned! {span=>
                     #field_ident: #self_field.unwrap(),
                 },
                 _ => {
@@ -283,34 +317,67 @@ pub fn try_from_for_struct(fields: &[ParsedField]) -> TokenStream {
             }
         }
     });
-    let create = quote! {
-        Self {
-            #(#field_tokens)*
-        }
-    };
     quote! {
-        if !configopt.is_complete() {
-            return Err(configopt);
-        }
-        Ok(#create)
+        Ok(Self {
+            #(#field_tokens)*
+        })
     }
 }
 
 pub fn is_complete_for_enum(variants: &[ParsedVariant]) -> TokenStream {
     variants
         .iter()
-        .map(|variant| match variant.field_type() {
-            FieldType::Unnamed => {
-                let full_configopt_ident = variant.full_configopt_ident();
-                quote! {
-                    (#full_configopt_ident(inner)) => {
-                        inner.is_complete()
+        .map(|variant| {
+            let full_configopt_ident = variant.full_configopt_ident();
+            match variant.field_type() {
+                FieldType::Unnamed => {
+                    quote! {
+                        #full_configopt_ident(inner) => {
+                            inner.is_complete()
+                        }
+                    }
+                }
+                FieldType::Unit => {
+                    quote! {
+                        #full_configopt_ident => {
+                            true
+                        }
+                    }
+                }
+                FieldType::Named => {
+                    quote! {
+                        // TODO
                     }
                 }
             }
-            FieldType::Named | FieldType::Unit => {
-                quote! {
-                    // TODO
+        })
+        .collect()
+}
+
+pub fn is_convertible_for_enum(variants: &[ParsedVariant]) -> TokenStream {
+    variants
+        .iter()
+        .map(|variant| {
+            let full_configopt_ident = variant.full_configopt_ident();
+            match variant.field_type() {
+                FieldType::Unnamed => {
+                    quote! {
+                        (#full_configopt_ident(inner)) => {
+                            inner.is_convertible()
+                        }
+                    }
+                }
+                FieldType::Unit => {
+                    quote! {
+                        #full_configopt_ident => {
+                            true
+                        }
+                    }
+                }
+                FieldType::Named => {
+                    quote! {
+                        // TODO
+                    }
                 }
             }
         })
@@ -320,19 +387,26 @@ pub fn is_complete_for_enum(variants: &[ParsedVariant]) -> TokenStream {
 pub fn take_for_enum(variants: &[ParsedVariant]) -> TokenStream {
     variants
         .iter()
-        .map(|variant| match variant.field_type() {
-            FieldType::Unnamed => {
-                let full_ident = variant.full_ident();
-                let full_configopt_ident = variant.full_configopt_ident();
-                quote! {
-                    (#full_ident(self_variant), #full_configopt_ident(other_variant)) => {
-                        self_variant.take(other_variant);
+        .map(|variant| {
+            let full_configopt_ident = variant.full_configopt_ident();
+            let full_ident = variant.full_ident();
+            match variant.field_type() {
+                FieldType::Unnamed => {
+                    quote! {
+                        (#full_ident(self_variant), #full_configopt_ident(other_variant)) => {
+                            self_variant.take(other_variant);
+                        }
                     }
                 }
-            }
-            FieldType::Named | FieldType::Unit => {
-                quote! {
-                    // TODO
+                FieldType::Unit => {
+                    quote! {
+                        (#full_ident, #full_configopt_ident) => {}
+                    }
+                }
+                FieldType::Named => {
+                    quote! {
+                        // TODO
+                    }
                 }
             }
         })
@@ -342,19 +416,28 @@ pub fn take_for_enum(variants: &[ParsedVariant]) -> TokenStream {
 pub fn from_for_enum(variants: &[ParsedVariant]) -> TokenStream {
     variants
         .iter()
-        .map(|variant| match variant.field_type() {
-            FieldType::Unnamed => {
-                let full_ident = variant.full_ident();
-                let full_configopt_ident = variant.full_configopt_ident();
-                quote! {
-                    #full_ident(inner) => {
-                        Ok(#full_configopt_ident(::std::convert::TryInto::try_into(inner).unwrap()))
+        .map(|variant| {
+            let full_ident = variant.full_ident();
+            let full_configopt_ident = variant.full_configopt_ident();
+            match variant.field_type() {
+                FieldType::Unnamed => {
+                    quote! {
+                        #full_ident(inner) => {
+                            #full_configopt_ident(inner.into())
+                        }
                     }
                 }
-            }
-            FieldType::Named | FieldType::Unit => {
-                quote! {
-                    // TODO
+                FieldType::Unit => {
+                    quote! {
+                        #full_ident => {
+                            #full_configopt_ident
+                        }
+                    }
+                }
+                FieldType::Named => {
+                    quote! {
+                        // TODO
+                    }
                 }
             }
         })
@@ -362,22 +445,30 @@ pub fn from_for_enum(variants: &[ParsedVariant]) -> TokenStream {
 }
 
 pub fn try_from_for_enum(variants: &[ParsedVariant]) -> TokenStream {
-    // We check upfront if the type `is_complete` so all these `unwrap`'s are ok
     variants
         .iter()
-        .map(|variant| match variant.field_type() {
-            FieldType::Unnamed => {
-                let full_ident = variant.full_ident();
-                let full_configopt_ident = variant.full_configopt_ident();
-                quote! {
-                    #full_configopt_ident(inner) => {
-                        #full_ident(::std::convert::TryInto::try_into(inner).unwrap())
+        .map(|variant| {
+            let full_ident = variant.full_ident();
+            let full_configopt_ident = variant.full_configopt_ident();
+            match variant.field_type() {
+                FieldType::Unnamed => {
+                    quote! {
+                        #full_configopt_ident(inner) => {
+                            Ok(#full_ident(inner.try_into().ok().unwrap()))
+                        }
                     }
                 }
-            }
-            FieldType::Named | FieldType::Unit => {
-                quote! {
-                    // TODO
+                FieldType::Unit => {
+                    quote! {
+                        #full_configopt_ident => {
+                            Ok(#full_ident)
+                        }
+                    }
+                }
+                FieldType::Named => {
+                    quote! {
+                        // TODO
+                    }
                 }
             }
         })

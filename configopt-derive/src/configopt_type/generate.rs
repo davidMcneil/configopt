@@ -3,6 +3,9 @@ pub mod core;
 pub mod default_config_files;
 pub mod handle_config_files;
 pub mod toml_config;
+mod try_from_error;
+
+pub use try_from_error::generate as try_from_error;
 
 use proc_macro2::TokenStream;
 use quote::quote;
