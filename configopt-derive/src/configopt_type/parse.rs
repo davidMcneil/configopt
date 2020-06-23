@@ -1,3 +1,5 @@
+#[macro_use]
+mod attribute_trimmer;
 mod configopt_parser;
 mod serde_parser;
 mod structopt_parser;
@@ -11,7 +13,10 @@ use std::{convert::Infallible, str::FromStr};
 use structopt_parser::StructOptAttr;
 use syn::{parse_quote, spanned::Spanned, Expr, Field, Fields, Ident, Type, Variant};
 
-pub use structopt_parser::{rename_all as structopt_rename_all, trim_structopt_attrs, StructOptTy};
+pub use serde_parser::trim_attr as trim_serde_attr;
+pub use structopt_parser::{
+    rename_all as structopt_rename_all, trim_attr as trim_structopt_attr, StructOptTy,
+};
 
 pub fn configopt_ident(ident: &Ident) -> Ident {
     ident.prepend("ConfigOpt")

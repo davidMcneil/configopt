@@ -1,4 +1,5 @@
 use proc_macro2::TokenStream;
+use quote::quote;
 use syn::{
     parenthesized,
     parse::{Parse, ParseStream},
@@ -55,3 +56,6 @@ pub fn parse_attrs(attrs: &[Attribute]) -> Vec<SerdeAttr> {
         })
         .collect()
 }
+
+const SERDE_FIELDS_TO_TRIM: &[&str] = &["default"];
+attribute_trimmer!("serde", SERDE_FIELDS_TO_TRIM);

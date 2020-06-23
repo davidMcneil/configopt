@@ -12,7 +12,6 @@ struct MyStruct {
     #[structopt(long)]
     maybe: bool,
     #[structopt(long)]
-    #[serde(default)]
     numbers: Vec<u32>,
     #[structopt(long)]
     optional: Option<String>,
@@ -71,10 +70,8 @@ struct FlatStruct {
     #[structopt(long)]
     flat_optional: Option<u32>,
     #[structopt(long)]
-    #[serde(default)]
     flat_maybe: bool,
     #[structopt(long)]
-    #[serde(default)]
     flat_numbers: Vec<u32>,
 }
 

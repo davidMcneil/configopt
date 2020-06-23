@@ -438,7 +438,8 @@ impl ConfigOptConstruct {
 fn retain_attrs(attrs: &mut Vec<Attribute>, retained_attrs: &[Ident]) {
     attrs.retain(|a| retained_attrs.iter().any(|i| a.path.is_ident(i)));
     for attr in attrs {
-        parse::trim_structopt_attrs(attr);
+        parse::trim_structopt_attr(attr);
+        parse::trim_serde_attr(attr);
     }
 }
 
@@ -459,9 +460,19 @@ fn convert_and_parse_field(
 
     retain_attrs(&mut field.attrs, &retained_attrs);
 
+    let structopt_ty = parsed_field.structopt_ty();
+
+    // If this field was a `Vec` we need to add a default value to allow deserializing the
+    // `ConfigOpt` type from an empty input.
+    if let StructOptTy::Vec = structopt_ty {
+        if retained_attrs.iter().any(|a| a == "serde") {
+            field.attrs.push(parse_quote! {#[serde(default)]})
+        }
+    }
+
     // If the field is not already, wrap its type in an `Option`. This guarantees that the
     // `ConfigOpt` struct can be parsed regardless of complete CLI input.
-    if let StructOptTy::Bool | StructOptTy::Other = parsed_field.structopt_ty() {
+    if let StructOptTy::Bool | StructOptTy::Other = structopt_ty {
         // If it was a flattened field all of its fields will be optional so it does not need to
         // be wrapped in an `Option`
         if !parsed_field.structopt_flatten() {

@@ -82,27 +82,11 @@ pub fn parse_attrs(attrs: &[Attribute]) -> Vec<StructOptAttr> {
         .collect()
 }
 
-struct TrimDefaultValueAttribute(Option<TokenStream>);
-
-impl Parse for TrimDefaultValueAttribute {
-    fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
-        // let name: Ident = input.parse()?;
-        Ok(if false {
-            Self(None)
-        } else {
-            // This was not a `default_value` attribute so reassemble the TokenStream
-            let token_stream = input.parse::<TokenStream>()?;
-            // Self(Some(parse_quote! {#name#token_stream}))
-            Self(Some(token_stream))
-        })
-    }
-}
-
 /// These are `structopt` attributes that do not make sense to apply to the `configopt` type. The
 /// purpose for trimming these is to remove all restrictions on parsing the `configopt` type from
 /// the CLI. This gives us the chance to read values from config files or other sources before we
 /// encounter CLI parsing errors.
-const STRUCTOPT_ATTRS_TO_TRIM: &[&str] = &[
+const STRUCTOPT_FIELDS_TO_TRIM: &[&str] = &[
     "conflicts_with",
     "conflicts_with_all",
     "required",
@@ -116,73 +100,7 @@ const STRUCTOPT_ATTRS_TO_TRIM: &[&str] = &[
     "requires_if",
     "requires_ifs",
 ];
-
-fn trim_structopt_attr(input: ParseStream) -> syn::Result<TokenStream> {
-    let name: Ident = input.parse()?;
-    let name_str = name.to_string();
-    let should_trim = STRUCTOPT_ATTRS_TO_TRIM.contains(&name_str.as_str());
-
-    Ok(if input.peek(Token![=]) {
-        // `name = value` attributes.
-        input.parse::<Token![=]>()?; // skip '='
-
-        let token_stream = if input.peek(LitStr) {
-            let lit: LitStr = input.parse()?;
-            quote! {#lit}
-        } else {
-            match input.parse::<Expr>() {
-                Ok(expr) => {
-                    quote! {#expr}
-                }
-                Err(e) => {
-                    panic!("`configopt` parsing `structopt` expected `string literal` or `expression` after `=`, err: {}", e)
-                }
-            }
-        };
-        if should_trim {
-            quote! {}
-        } else {
-            quote! {#name = #token_stream}
-        }
-    } else if input.peek(syn::token::Paren) {
-        // `name(...)` attributes.
-        let nested;
-        parenthesized!(nested in input);
-        let token_stream: TokenStream = nested.parse()?;
-        if should_trim {
-            quote! {}
-        } else {
-            quote! {#name(#token_stream)}
-        }
-    } else {
-        // Attributes represented with a sole identifier.
-        if should_trim {
-            quote! {}
-        } else {
-            quote! {#name}
-        }
-    })
-}
-
-fn structopt_attrs_trimmer(input: ParseStream) -> syn::Result<Punctuated<TokenStream, Token![,]>> {
-    Ok(input
-        .parse_terminated::<_, Token![,]>(trim_structopt_attr)?
-        .into_iter()
-        .filter(|p| !p.is_empty())
-        .collect())
-}
-
-/// Default values do not make sense for any fields of the fully optional `ConfigOpt` so we trim
-/// them off
-pub fn trim_structopt_attrs(attr: &mut Attribute) {
-    if !attr.path.is_ident("structopt") {
-        return;
-    }
-    let tokens = attr
-        .parse_args_with(structopt_attrs_trimmer)
-        .expect("`ConfigOpt` failed to trim `structopt::default_value` attributes");
-    attr.tokens = quote! {(#tokens)};
-}
+attribute_trimmer!("serde", STRUCTOPT_FIELDS_TO_TRIM);
 
 pub fn rename_all(attrs: &[Attribute]) -> Option<CasingStyle> {
     parse_attrs(attrs).into_iter().find_map(|a| match a {
