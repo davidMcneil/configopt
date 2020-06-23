@@ -223,7 +223,7 @@ impl ConfigOptConstruct {
                     #lints
                     impl ::std::convert::TryFrom<#configopt_ident> for #ident {
                         type Error = #configopt_ident;
-                        fn try_from(configopt: #configopt_ident) -> Result<Self, Self::Error> {
+                        fn try_from(configopt: #configopt_ident) -> ::std::result::Result<Self, Self::Error> {
                             use ::std::convert::TryInto;
 
                             if !configopt.is_convertible() {
@@ -359,7 +359,7 @@ impl ConfigOptConstruct {
                     #lints
                     impl ::std::convert::TryFrom<#configopt_ident> for #ident {
                         type Error = #configopt_ident;
-                        fn try_from(configopt: #configopt_ident) -> Result<Self, Self::Error> {
+                        fn try_from(configopt: #configopt_ident) -> ::std::result::Result<Self, Self::Error> {
                             use ::std::convert::TryInto;
 
                             if !configopt.is_convertible() {
