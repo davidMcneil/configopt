@@ -193,16 +193,19 @@ impl ConfigOptConstruct {
                         }
 
                         /// Check if all fields of `self` are `None`
+                        #[allow(clippy::eq_op)]
                         pub fn is_empty(&self) -> bool {
                             #configopt_is_empty
                         }
 
                         /// Check if all fields of `self` are `Some` applied recursively
+                        #[allow(clippy::eq_op)]
                         pub fn is_complete(&self) -> bool {
                             #configopt_is_complete
                         }
 
                         /// Check if `self` can be converted into a full version
+                        #[allow(clippy::eq_op)]
                         pub fn is_convertible(&self) -> bool {
                             #configopt_is_convertible
                         }
