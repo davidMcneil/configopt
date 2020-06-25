@@ -132,7 +132,7 @@ impl ConfigOptConstruct {
         // Add the derives
         derives.push(parse_quote! {StructOpt});
         // TODO: Remove this requirement
-        derives.push(parse_quote! {Deserialize});
+        derives.push(parse_quote! {serde::Deserialize});
         configopt_type.append_derives(derives);
 
         (configopt_type, configopt_construct)
@@ -147,10 +147,10 @@ impl ConfigOptConstruct {
             Self::Struct(_, default_config_file, parsed_fields) => {
                 use generate::core::struct_type;
 
-                let configopt_take = struct_type::take(&parsed_fields, &other);
                 let configopt_patch = struct_type::patch(&parsed_fields, &other);
-                let configopt_take_for = struct_type::take_for(&parsed_fields, &other);
+                let configopt_take = struct_type::take(&parsed_fields, &other);
                 let configopt_patch_for = struct_type::patch_for(&parsed_fields, &other);
+                let configopt_take_for = struct_type::take_for(&parsed_fields, &other);
                 let configopt_is_empty = struct_type::is_empty(&parsed_fields);
                 let configopt_is_complete = struct_type::is_complete(&parsed_fields);
                 let configopt_is_convertible = struct_type::is_convertible(&parsed_fields);
@@ -311,10 +311,11 @@ impl ConfigOptConstruct {
             Self::Enum(_, parsed_variants) => {
                 use generate::core::enum_type;
 
-                let configopt_take = enum_type::take(&parsed_variants);
                 let configopt_patch = enum_type::patch(&parsed_variants);
-                let configopt_take_for = enum_type::take_for(&parsed_variants);
+                let configopt_take = enum_type::take(&parsed_variants);
                 let configopt_patch_for = enum_type::patch_for(&parsed_variants);
+                let configopt_take_for = enum_type::take_for(&parsed_variants);
+                let configopt_is_empty = enum_type::is_empty(&parsed_variants);
                 let configopt_is_complete = enum_type::is_complete(&parsed_variants);
                 let configopt_is_convertible = enum_type::is_convertible(&parsed_variants);
                 let configopt_from = enum_type::from(&parsed_variants);
@@ -334,9 +335,7 @@ impl ConfigOptConstruct {
                         pub fn take(&mut self, other: &mut #configopt_ident) {
                             match (self, other) {
                                 #configopt_take
-                                _ => {
-                                    panic!("TODO: `take` for enum is not fully implemented");
-                                }
+                                _ => {}
                             }
                         }
 
@@ -344,9 +343,7 @@ impl ConfigOptConstruct {
                         pub fn patch(&mut self, other: &mut #configopt_ident) {
                             match (self, other) {
                                 #configopt_patch
-                                _ => {
-                                    panic!("TODO: `patch` for enum is not fully implemented");
-                                }
+                                _ => {}
                             }
                         }
 
@@ -354,9 +351,7 @@ impl ConfigOptConstruct {
                         pub fn take_for(&mut self, other: &mut #ident) {
                             match (self, other) {
                                 #configopt_take_for
-                                _ => {
-                                    panic!("TODO: `take_for` for enum is not fully implemented");
-                                }
+                                _ => {}
                             }
                         }
 
@@ -364,9 +359,14 @@ impl ConfigOptConstruct {
                         pub fn patch_for(&mut self, other: &mut #ident) {
                             match (self, other) {
                                 #configopt_patch_for
-                                _ => {
-                                    panic!("TODO: `patch_for` for enum is not fully implemented");
-                                }
+                                _ => {}
+                            }
+                        }
+
+                        /// Check if all fields of `self` are `None` applied recursively
+                        pub fn is_empty(&self) -> bool {
+                            match self {
+                                #configopt_is_empty
                             }
                         }
 
@@ -374,9 +374,6 @@ impl ConfigOptConstruct {
                         pub fn is_complete(&self) -> bool {
                             match self {
                                 #configopt_is_complete
-                                _ => {
-                                    panic!("TODO: `is_complete` for enum is not fully implemented");
-                                }
                             }
                         }
 
@@ -384,9 +381,6 @@ impl ConfigOptConstruct {
                         pub fn is_convertible(&self) -> bool {
                             match self {
                                 #configopt_is_convertible
-                                _ => {
-                                    panic!("TODO: `is_convertible` for enum is not fully implemented");
-                                }
                             }
                         }
                     }
@@ -396,9 +390,6 @@ impl ConfigOptConstruct {
                         fn from(other: #ident) -> Self {
                             match other {
                                 #configopt_from
-                                _ => {
-                                    panic!("TODO: `from` for enum is not fully implemented");
-                                }
                             }
                         }
                     }
@@ -414,9 +405,6 @@ impl ConfigOptConstruct {
                             }
                             match configopt {
                                 #configopt_try_from
-                                _ => {
-                                    panic!("TODO: `try_from` for enum is not fully implemented");
-                                }
                             }
                         }
                     }

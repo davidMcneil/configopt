@@ -1,5 +1,4 @@
 use configopt::ConfigOpt;
-use serde::Deserialize;
 use std::convert::TryFrom;
 use structopt::StructOpt;
 

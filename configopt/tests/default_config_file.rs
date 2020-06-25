@@ -1,5 +1,4 @@
 use configopt::ConfigOpt;
-use serde::Deserialize;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -10,7 +9,7 @@ struct NoDefaultConfigFile {
 }
 
 #[derive(ConfigOpt, StructOpt)]
-// TODO: Make this use `=`
+// TODO: Make this use `=` and allow an expression
 #[configopt(default_config_file("/my/default/config/file"))]
 struct DefaultConfigFile {
     #[structopt(long)]

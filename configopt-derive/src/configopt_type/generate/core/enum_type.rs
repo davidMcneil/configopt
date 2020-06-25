@@ -2,66 +2,6 @@ use crate::configopt_type::parse::{FieldType, ParsedVariant};
 use proc_macro2::TokenStream;
 use quote::quote;
 
-pub(crate) fn is_complete(variants: &[ParsedVariant]) -> TokenStream {
-    variants
-        .iter()
-        .map(|variant| {
-            let full_configopt_ident = variant.full_configopt_ident();
-            match variant.field_type() {
-                FieldType::Unnamed => {
-                    quote! {
-                        #full_configopt_ident(inner) => {
-                            inner.is_complete()
-                        }
-                    }
-                }
-                FieldType::Unit => {
-                    quote! {
-                        #full_configopt_ident => {
-                            true
-                        }
-                    }
-                }
-                FieldType::Named => {
-                    quote! {
-                        // TODO
-                    }
-                }
-            }
-        })
-        .collect()
-}
-
-pub(crate) fn is_convertible(variants: &[ParsedVariant]) -> TokenStream {
-    variants
-        .iter()
-        .map(|variant| {
-            let full_configopt_ident = variant.full_configopt_ident();
-            match variant.field_type() {
-                FieldType::Unnamed => {
-                    quote! {
-                        (#full_configopt_ident(inner)) => {
-                            inner.is_convertible()
-                        }
-                    }
-                }
-                FieldType::Unit => {
-                    quote! {
-                        #full_configopt_ident => {
-                            true
-                        }
-                    }
-                }
-                FieldType::Named => {
-                    quote! {
-                        // TODO
-                    }
-                }
-            }
-        })
-        .collect()
-}
-
 pub(crate) fn patch(variants: &[ParsedVariant]) -> TokenStream {
     variants
         .iter()
@@ -82,7 +22,9 @@ pub(crate) fn patch(variants: &[ParsedVariant]) -> TokenStream {
                 }
                 FieldType::Named => {
                     quote! {
-                        // TODO
+                        (#full_configopt_ident{..}, #full_configopt_ident{..}) => {
+                            todo!()
+                        }
                     }
                 }
             }
@@ -110,7 +52,9 @@ pub(crate) fn take(variants: &[ParsedVariant]) -> TokenStream {
                 }
                 FieldType::Named => {
                     quote! {
-                        // TODO
+                        (#full_configopt_ident{..}, #full_configopt_ident{..}) => {
+                            todo!()
+                        }
                     }
                 }
             }
@@ -139,7 +83,9 @@ pub(crate) fn patch_for(variants: &[ParsedVariant]) -> TokenStream {
                 }
                 FieldType::Named => {
                     quote! {
-                        // TODO
+                        (#full_configopt_ident{..}, #full_ident{..}) => {
+                            todo!()
+                        }
                     }
                 }
             }
@@ -168,7 +114,9 @@ pub(crate) fn take_for(variants: &[ParsedVariant]) -> TokenStream {
                 }
                 FieldType::Named => {
                     quote! {
-                        // TODO
+                        (#full_configopt_ident{..}, #full_ident{..}) => {
+                            todo!()
+                        }
                     }
                 }
             }
@@ -199,7 +147,122 @@ pub(crate) fn from(variants: &[ParsedVariant]) -> TokenStream {
                 }
                 FieldType::Named => {
                     quote! {
-                        // TODO
+                        #full_ident {..} => {
+                            todo!()
+                        }
+                    }
+                }
+            }
+        })
+        .collect()
+}
+
+pub(crate) fn is_empty(variants: &[ParsedVariant]) -> TokenStream {
+    // Handle the case of an empty enum
+    if variants.is_empty() {
+        return quote! {
+            _ => true
+        };
+    }
+    variants
+        .iter()
+        .map(|variant| {
+            let full_configopt_ident = variant.full_configopt_ident();
+            match variant.field_type() {
+                FieldType::Unnamed => {
+                    quote! {
+                        #full_configopt_ident(inner) => {
+                            inner.is_empty()
+                        }
+                    }
+                }
+                FieldType::Unit => {
+                    quote! {
+                        #full_configopt_ident => {
+                            false
+                        }
+                    }
+                }
+                FieldType::Named => {
+                    quote! {
+                        #full_configopt_ident {..} => {
+                            todo!()
+                        }
+                    }
+                }
+            }
+        })
+        .collect()
+}
+
+pub(crate) fn is_complete(variants: &[ParsedVariant]) -> TokenStream {
+    // Handle the case of an empty enum
+    if variants.is_empty() {
+        return quote! {
+            _ => true
+        };
+    }
+    variants
+        .iter()
+        .map(|variant| {
+            let full_configopt_ident = variant.full_configopt_ident();
+            match variant.field_type() {
+                FieldType::Unnamed => {
+                    quote! {
+                        #full_configopt_ident(inner) => {
+                            inner.is_complete()
+                        }
+                    }
+                }
+                FieldType::Unit => {
+                    quote! {
+                        #full_configopt_ident => {
+                            true
+                        }
+                    }
+                }
+                FieldType::Named => {
+                    quote! {
+                        #full_configopt_ident {..} => {
+                            todo!()
+                        }
+                    }
+                }
+            }
+        })
+        .collect()
+}
+
+pub(crate) fn is_convertible(variants: &[ParsedVariant]) -> TokenStream {
+    if variants.is_empty() {
+        return quote! {
+            _ => true
+        };
+    }
+    variants
+        .iter()
+        .map(|variant| {
+            let full_configopt_ident = variant.full_configopt_ident();
+            match variant.field_type() {
+                FieldType::Unnamed => {
+                    quote! {
+                        (#full_configopt_ident(inner)) => {
+                            inner.is_convertible()
+                        }
+                    }
+                }
+                FieldType::Unit => {
+                    quote! {
+                        #full_configopt_ident => {
+                            true
+                        }
+                    }
+                }
+                FieldType::Named => {
+                    quote! {
+                        #full_configopt_ident {..} => {
+                            todo!()
+                        }
                     }
                 }
             }
@@ -230,7 +293,9 @@ pub(crate) fn try_from(variants: &[ParsedVariant]) -> TokenStream {
                 }
                 FieldType::Named => {
                     quote! {
-                        // TODO
+                        #full_configopt_ident {..} => {
+                            todo!()
+                        }
                     }
                 }
             }
