@@ -145,18 +145,17 @@ impl ConfigOptConstruct {
         let configopt_ident = parse::configopt_ident(ident);
         match self {
             Self::Struct(_, default_config_file, parsed_fields) => {
-                let configopt_take = generate::core::take_for_struct(&parsed_fields, &other);
-                let configopt_patch = generate::core::patch_for_struct(&parsed_fields, &other);
-                let configopt_take_for =
-                    generate::core::take_for_for_struct(&parsed_fields, &other);
-                let configopt_patch_for =
-                    generate::core::patch_for_for_struct(&parsed_fields, &other);
-                let configopt_is_empty = generate::core::is_empty_for_struct(&parsed_fields);
-                let configopt_is_complete = generate::core::is_complete_for_struct(&parsed_fields);
-                let configopt_is_convertible =
-                    generate::core::is_convertible_for_struct(&parsed_fields);
-                let configopt_from = generate::core::from_for_struct(&parsed_fields, &other);
-                let configopt_try_from = generate::core::try_from_for_struct(&parsed_fields);
+                use generate::core::struct_type;
+
+                let configopt_take = struct_type::take(&parsed_fields, &other);
+                let configopt_patch = struct_type::patch(&parsed_fields, &other);
+                let configopt_take_for = struct_type::take_for(&parsed_fields, &other);
+                let configopt_patch_for = struct_type::patch_for(&parsed_fields, &other);
+                let configopt_is_empty = struct_type::is_empty(&parsed_fields);
+                let configopt_is_complete = struct_type::is_complete(&parsed_fields);
+                let configopt_is_convertible = struct_type::is_convertible(&parsed_fields);
+                let configopt_from = struct_type::from(&parsed_fields, &other);
+                let configopt_try_from = struct_type::try_from(&parsed_fields);
                 let default_config_files =
                     generate::default_config_files::generate(default_config_file.as_deref());
                 let handle_config_files_generate =
@@ -310,15 +309,16 @@ impl ConfigOptConstruct {
                 }
             }
             Self::Enum(_, parsed_variants) => {
-                let configopt_take = generate::core::take_for_enum(&parsed_variants);
-                let configopt_patch = generate::core::patch_for_enum(&parsed_variants);
-                let configopt_take_for = generate::core::take_for_for_enum(&parsed_variants);
-                let configopt_patch_for = generate::core::patch_for_for_enum(&parsed_variants);
-                let configopt_is_complete = generate::core::is_complete_for_enum(&parsed_variants);
-                let configopt_is_convertible =
-                    generate::core::is_convertible_for_enum(&parsed_variants);
-                let configopt_from = generate::core::from_for_enum(&parsed_variants);
-                let configopt_try_from = generate::core::try_from_for_enum(&parsed_variants);
+                use generate::core::enum_type;
+
+                let configopt_take = enum_type::take(&parsed_variants);
+                let configopt_patch = enum_type::patch(&parsed_variants);
+                let configopt_take_for = enum_type::take_for(&parsed_variants);
+                let configopt_patch_for = enum_type::patch_for(&parsed_variants);
+                let configopt_is_complete = enum_type::is_complete(&parsed_variants);
+                let configopt_is_convertible = enum_type::is_convertible(&parsed_variants);
+                let configopt_from = enum_type::from(&parsed_variants);
+                let configopt_try_from = enum_type::try_from(&parsed_variants);
                 let handle_config_files_generate =
                     generate::handle_config_files::generate_for_enum(parsed_variants);
                 let handle_config_files_patch =
