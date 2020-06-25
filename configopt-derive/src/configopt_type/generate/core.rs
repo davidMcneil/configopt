@@ -384,7 +384,63 @@ pub fn is_convertible_for_enum(variants: &[ParsedVariant]) -> TokenStream {
         .collect()
 }
 
+pub fn patch_for_enum(variants: &[ParsedVariant]) -> TokenStream {
+    variants
+        .iter()
+        .map(|variant| {
+            let full_configopt_ident = variant.full_configopt_ident();
+            match variant.field_type() {
+                FieldType::Unnamed => {
+                    quote! {
+                        (#full_configopt_ident(self_variant), #full_configopt_ident(other_variant)) => {
+                            self_variant.patch(other_variant);
+                        }
+                    }
+                }
+                FieldType::Unit => {
+                    quote! {
+                        (#full_configopt_ident, #full_configopt_ident) => {}
+                    }
+                }
+                FieldType::Named => {
+                    quote! {
+                        // TODO
+                    }
+                }
+            }
+        })
+        .collect()
+}
+
 pub fn take_for_enum(variants: &[ParsedVariant]) -> TokenStream {
+    variants
+        .iter()
+        .map(|variant| {
+            let full_configopt_ident = variant.full_configopt_ident();
+            match variant.field_type() {
+                FieldType::Unnamed => {
+                    quote! {
+                        (#full_configopt_ident(self_variant), #full_configopt_ident(other_variant)) => {
+                            self_variant.take(other_variant);
+                        }
+                    }
+                }
+                FieldType::Unit => {
+                    quote! {
+                        (#full_configopt_ident, #full_configopt_ident) => {}
+                    }
+                }
+                FieldType::Named => {
+                    quote! {
+                        // TODO
+                    }
+                }
+            }
+        })
+        .collect()
+}
+
+pub fn patch_for_for_enum(variants: &[ParsedVariant]) -> TokenStream {
     variants
         .iter()
         .map(|variant| {
@@ -393,14 +449,43 @@ pub fn take_for_enum(variants: &[ParsedVariant]) -> TokenStream {
             match variant.field_type() {
                 FieldType::Unnamed => {
                     quote! {
-                        (#full_ident(self_variant), #full_configopt_ident(other_variant)) => {
-                            self_variant.take(other_variant);
+                        (#full_configopt_ident(self_variant), #full_ident(other_variant)) => {
+                            self_variant.patch_for(other_variant);
                         }
                     }
                 }
                 FieldType::Unit => {
                     quote! {
-                        (#full_ident, #full_configopt_ident) => {}
+                        (#full_configopt_ident, #full_ident) => {}
+                    }
+                }
+                FieldType::Named => {
+                    quote! {
+                        // TODO
+                    }
+                }
+            }
+        })
+        .collect()
+}
+
+pub fn take_for_for_enum(variants: &[ParsedVariant]) -> TokenStream {
+    variants
+        .iter()
+        .map(|variant| {
+            let full_configopt_ident = variant.full_configopt_ident();
+            let full_ident = variant.full_ident();
+            match variant.field_type() {
+                FieldType::Unnamed => {
+                    quote! {
+                        (#full_configopt_ident(self_variant), #full_ident(other_variant)) => {
+                            self_variant.take_for(other_variant);
+                        }
+                    }
+                }
+                FieldType::Unit => {
+                    quote! {
+                        (#full_configopt_ident, #full_ident) => {}
                     }
                 }
                 FieldType::Named => {

@@ -299,13 +299,21 @@ impl ConfigOptConstruct {
                     impl ::configopt::ConfigOpt for #ident {
                         type ConfigOptType = #configopt_ident;
 
-                        fn take(&mut self, configopt: &mut Self::ConfigOptType) {
-                            configopt.take_for(self)
+                        fn patch(&mut self, other: &mut Self::ConfigOptType) {
+                            other.patch_for(self);
+                        }
+
+                        fn take(&mut self, other: &mut Self::ConfigOptType) {
+                            other.patch_for(self);
                         }
                     }
                 }
             }
             Self::Enum(_, parsed_variants) => {
+                let configopt_take = generate::core::take_for_enum(&parsed_variants);
+                let configopt_patch = generate::core::patch_for_enum(&parsed_variants);
+                let configopt_take_for = generate::core::take_for_for_enum(&parsed_variants);
+                let configopt_patch_for = generate::core::patch_for_for_enum(&parsed_variants);
                 let configopt_is_complete = generate::core::is_complete_for_enum(&parsed_variants);
                 let configopt_is_convertible =
                     generate::core::is_convertible_for_enum(&parsed_variants);
@@ -317,12 +325,51 @@ impl ConfigOptConstruct {
                     generate::handle_config_files::patch_for_enum(parsed_variants);
                 let configopt_defaults_variant =
                     generate::configopt_defaults::for_enum(&parsed_variants);
-                let configopt_take = generate::core::take_for_enum(&parsed_variants);
 
                 quote! {
 
                     #lints
                     impl #configopt_ident {
+                        /// Take each field from `other` and set it in `self`
+                        pub fn take(&mut self, other: &mut #configopt_ident) {
+                            match (self, other) {
+                                #configopt_take
+                                _ => {
+                                    panic!("TODO: `take` for enum is not fully implemented");
+                                }
+                            }
+                        }
+
+                        /// For each field in `self` if it is `None`, take the value from `other` and set it in `self`
+                        pub fn patch(&mut self, other: &mut #configopt_ident) {
+                            match (self, other) {
+                                #configopt_patch
+                                _ => {
+                                    panic!("TODO: `patch` for enum is not fully implemented");
+                                }
+                            }
+                        }
+
+                        /// Take each field from `self` and set it in `other`
+                        pub fn take_for(&mut self, other: &mut #ident) {
+                            match (self, other) {
+                                #configopt_take_for
+                                _ => {
+                                    panic!("TODO: `take_for` for enum is not fully implemented");
+                                }
+                            }
+                        }
+
+                        /// For each field in `other` if it is `None`, take the value from `self` and set it in `other`
+                        pub fn patch_for(&mut self, other: &mut #ident) {
+                            match (self, other) {
+                                #configopt_patch_for
+                                _ => {
+                                    panic!("TODO: `patch_for` for enum is not fully implemented");
+                                }
+                            }
+                        }
+
                         /// Check if all fields of `self` are `Some` applied recursively
                         pub fn is_complete(&self) -> bool {
                             match self {
@@ -415,13 +462,12 @@ impl ConfigOptConstruct {
                     impl ::configopt::ConfigOpt for #ident {
                         type ConfigOptType = #configopt_ident;
 
-                        fn take(&mut self, configopt: &mut Self::ConfigOptType) {
-                            match (self, configopt) {
-                                #configopt_take
-                                _ => {
-                                    panic!("TODO: take for enum is not fully implemented");
-                                }
-                            }
+                        fn patch(&mut self, other: &mut Self::ConfigOptType) {
+                            other.patch_for(self);
+                        }
+
+                        fn take(&mut self, other: &mut Self::ConfigOptType) {
+                            other.patch_for(self);
                         }
                     }
                 }

@@ -250,8 +250,7 @@ pub trait ConfigOpt: Sized + StructOpt {
                 // Take into account any values from config files by taking the values from the
                 // configopt type. This is needed for types that do not always set their value if
                 // a default is set (eg Option<T>)
-                // TODO (DM): This should be patch?
-                <Self as ConfigOpt>::take(&mut s, &mut configopt);
+                <Self as ConfigOpt>::patch(&mut s, &mut configopt);
                 Ok(s)
             }
             Err(e) => {
@@ -282,6 +281,9 @@ pub trait ConfigOpt: Sized + StructOpt {
         String::from_utf8_lossy(&help).to_string()
     }
 
-    #[doc(hidden)]
-    fn take(&mut self, configopt: &mut Self::ConfigOptType);
+    /// For each field in `self` if it is `None`, take the value from `other` and set it in `self`
+    fn patch(&mut self, other: &mut Self::ConfigOptType);
+
+    /// Take each field from `other` and set it in `self`
+    fn take(&mut self, other: &mut Self::ConfigOptType);
 }
