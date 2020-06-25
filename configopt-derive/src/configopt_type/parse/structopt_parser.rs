@@ -100,7 +100,7 @@ const STRUCTOPT_FIELDS_TO_TRIM: &[&str] = &[
     "requires_if",
     "requires_ifs",
 ];
-attribute_trimmer!("serde", STRUCTOPT_FIELDS_TO_TRIM);
+attribute_trimmer!("structopt", STRUCTOPT_FIELDS_TO_TRIM);
 
 pub fn rename_all(attrs: &[Attribute]) -> Option<CasingStyle> {
     parse_attrs(attrs).into_iter().find_map(|a| match a {
