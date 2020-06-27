@@ -1,13 +1,11 @@
 pub mod generate;
 pub mod parse;
 
-use parse::{CasingStyle, ParsedField, ParsedVariant, StructOptTy};
+use parse::{CasingStyle, ParsedField, ParsedVariant};
 use proc_macro2::TokenStream;
 use proc_macro_roids::DeriveInputExt;
 use quote::quote;
-use syn::{
-    parse_quote, punctuated::Punctuated, Attribute, Data, DeriveInput, Field, Fields, Ident, Token,
-};
+use syn::{parse_quote, punctuated::Punctuated, Data, DeriveInput, Fields, Ident, Token};
 
 pub enum ConfigOptConstruct {
     Struct(Ident, Option<String>, Vec<ParsedField>),
@@ -58,7 +56,7 @@ impl ConfigOptConstruct {
             .into_iter()
             .collect::<Punctuated<_, Token![,]>>();
 
-        retain_attrs(&mut configopt_type.attrs, &retained_attrs);
+        parse::retain_attrs(&mut configopt_type.attrs, &retained_attrs);
 
         // Determine the global rename casing style for structopt and serde
         let structopt_rename = parse::structopt_rename_all(&configopt_type.attrs)
@@ -79,7 +77,7 @@ impl ConfigOptConstruct {
                             .named
                             .iter_mut()
                             .map(|field| {
-                                convert_and_parse_field(
+                                ParsedField::new(
                                     field,
                                     structopt_rename,
                                     serde_rename,
@@ -98,31 +96,14 @@ impl ConfigOptConstruct {
             Data::Enum(data) => {
                 let mut parsed_variants = Vec::new();
                 for variant in &mut data.variants {
-                    retain_attrs(&mut variant.attrs, &retained_attrs);
-
-                    match &mut variant.fields {
-                        Fields::Named(fields) => {
-                            for field in &mut fields.named {
-                                convert_and_parse_field(
-                                    field,
-                                    structopt_rename,
-                                    serde_rename,
-                                    &retained_attrs,
-                                );
-                            }
-                        }
-                        Fields::Unnamed(fields) => {
-                            if fields.unnamed.len() > 1 {
-                                panic!("`ConfigOpt` cannot be derived on unnamed enums with a length greater than 1");
-                            }
-                            // Modify the type with the configopt type prefix
-                            let field = &mut fields.unnamed[0];
-                            let ty = parse::inner_ty(&mut field.ty);
-                            *ty = parse::configopt_ident(ty);
-                        }
-                        Fields::Unit => {}
-                    }
-                    parsed_variants.push(ParsedVariant::new(&ident, variant));
+                    parse::retain_attrs(&mut variant.attrs, &retained_attrs);
+                    parsed_variants.push(ParsedVariant::new(
+                        &ident,
+                        variant,
+                        structopt_rename,
+                        serde_rename,
+                        &retained_attrs,
+                    ));
                 }
                 ConfigOptConstruct::Enum(ident, parsed_variants)
             }
@@ -147,10 +128,10 @@ impl ConfigOptConstruct {
             Self::Struct(_, default_config_file, parsed_fields) => {
                 use generate::core::struct_type;
 
-                let configopt_patch = struct_type::patch(&parsed_fields, &other);
-                let configopt_take = struct_type::take(&parsed_fields, &other);
-                let configopt_patch_for = struct_type::patch_for(&parsed_fields, &other);
-                let configopt_take_for = struct_type::take_for(&parsed_fields, &other);
+                let configopt_patch = struct_type::patch(&parsed_fields);
+                let configopt_take = struct_type::take(&parsed_fields);
+                let configopt_patch_for = struct_type::patch_for(&parsed_fields);
+                let configopt_take_for = struct_type::take_for(&parsed_fields);
                 let configopt_is_empty = struct_type::is_empty(&parsed_fields);
                 let configopt_is_complete = struct_type::is_complete(&parsed_fields);
                 let configopt_is_convertible = struct_type::is_convertible(&parsed_fields);
@@ -469,62 +450,4 @@ impl ConfigOptConstruct {
             Self::Enum(ident, _) => ident,
         }
     }
-}
-
-// Only retain attributes we have explicitly opted to preserve
-fn retain_attrs(attrs: &mut Vec<Attribute>, retained_attrs: &[Ident]) {
-    attrs.retain(|a| retained_attrs.iter().any(|i| a.path.is_ident(i)));
-    for attr in attrs {
-        parse::trim_structopt_attr(attr);
-        parse::trim_serde_attr(attr);
-    }
-}
-
-fn convert_and_parse_field(
-    field: &mut Field,
-    structopt_rename: CasingStyle,
-    serde_rename: CasingStyle,
-    retained_attrs: &[Ident],
-) -> ParsedField {
-    let parsed_field = ParsedField::new(field, structopt_rename, serde_rename);
-
-    let ty = &mut field.ty;
-
-    // If the field is flattened or a subcommand, modify the type with the configopt type prefix
-    if parsed_field.structopt_flatten() || parsed_field.subcommand() {
-        *parse::inner_ty(ty) = parsed_field.configopt_inner_ty().clone();
-    }
-
-    retain_attrs(&mut field.attrs, &retained_attrs);
-
-    let structopt_ty = parsed_field.structopt_ty();
-
-    // If this field was a `Vec` we need to add a default value to allow deserializing the
-    // `ConfigOpt` type from an empty input.
-    if let StructOptTy::Vec = structopt_ty {
-        if retained_attrs.iter().any(|a| a == "serde") {
-            field.attrs.push(parse_quote! {#[serde(default)]})
-        }
-    }
-
-    // If the field is not already, wrap its type in an `Option`. This guarantees that the
-    // `ConfigOpt` struct can be parsed regardless of complete CLI input.
-    if let StructOptTy::Bool | StructOptTy::Other = structopt_ty {
-        // If it was a flattened field all of its fields will be optional so it does not need to
-        // be wrapped in an `Option`
-        if !parsed_field.structopt_flatten() {
-            field.ty = parse_quote!(Option<#ty>);
-        }
-        // If this field was a `bool` we need to add a default of `true` now that it is wrapped in
-        // an `Option`. This preserves the same behavior as if we just had a `bool`, but allows us
-        // to detect if the `bool` even has a value. Essentially, it adds a third state of not set
-        // (None) to this field.
-        if let StructOptTy::Bool = parsed_field.structopt_ty() {
-            field
-                .attrs
-                .push(parse_quote! {#[structopt(default_value = "true")]})
-        }
-    }
-
-    parsed_field
 }

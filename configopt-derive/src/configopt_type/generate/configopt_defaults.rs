@@ -154,7 +154,7 @@ pub fn for_enum(variants: &[ParsedVariant]) -> TokenStream {
                         }
                     }
                 }
-                FieldType::Named => {
+                FieldType::Named(_) => {
                     quote_spanned! {span=>
                         // TODO: Actually lookup the values
                         #full_configopt_ident{..} => None,

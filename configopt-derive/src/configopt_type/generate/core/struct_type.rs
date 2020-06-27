@@ -3,23 +3,65 @@ use proc_macro2::TokenStream;
 use quote::{quote, quote_spanned};
 use syn::{spanned::Spanned, Ident};
 
-pub fn patch(fields: &[ParsedField], other: &Ident) -> TokenStream {
+struct FieldNames {
+    self_field: TokenStream,
+    other_field: TokenStream,
+    deref_self_field: TokenStream,
+    deref_other_field: TokenStream,
+}
+
+impl FieldNames {
+    fn new(field_ident: &Ident, self_prefix: &str, other_prefix: &str, references: bool) -> Self {
+        let self_field = format!("{}{}", self_prefix, field_ident)
+            .parse::<TokenStream>()
+            .unwrap();
+        let other_field = format!("{}{}", other_prefix, field_ident)
+            .parse::<TokenStream>()
+            .unwrap();
+        if references {
+            Self {
+                self_field: quote! {#self_field},
+                other_field: quote! {#other_field},
+                deref_self_field: quote! {*#self_field},
+                deref_other_field: quote! {*#other_field},
+            }
+        } else {
+            Self {
+                self_field: quote! {&mut #self_field},
+                other_field: quote! {&mut #other_field},
+                deref_self_field: quote! {#self_field},
+                deref_other_field: quote! {#other_field},
+            }
+        }
+    }
+}
+
+pub(crate) fn patch_with_prefix(
+    self_prefix: &str,
+    other_prefix: &str,
+    references: bool,
+    fields: &[ParsedField],
+) -> TokenStream {
     fields
         .iter()
         .map(|field| {
             let field_ident = field.ident();
             let span = field.span();
-            let self_field = quote! {self.#field_ident};
-            let other_field = quote! {#other.#field_ident};
+            let FieldNames {
+                self_field,
+                other_field,
+                deref_other_field: _,
+                deref_self_field,
+            } = FieldNames::new(field_ident, self_prefix, other_prefix, references);
             if field.structopt_flatten() {
                 quote_spanned! {span=>
-                    #self_field.patch(&mut #other_field);
+                    #self_field.patch(#other_field);
                 }
             } else {
                 match field.structopt_ty() {
                     StructOptTy::Vec => quote_spanned! {span=>
-                        if #self_field.is_empty() {
-                            ::std::mem::swap(&mut #self_field, &mut #other_field);
+                        if (#self_field).is_empty() {
+                            ::std::mem::swap(#self_field, #other_field);
                         }
                     },
                     StructOptTy::Bool
@@ -28,8 +70,8 @@ pub fn patch(fields: &[ParsedField], other: &Ident) -> TokenStream {
                     | StructOptTy::OptionVec
                     | StructOptTy::Other => {
                         quote_spanned! {span=>
-                            if #self_field.is_none() {
-                                #self_field = #other_field.take();
+                            if (#self_field).is_none() {
+                                #deref_self_field = (#other_field).take();
                             }
                         }
                     }
@@ -39,23 +81,32 @@ pub fn patch(fields: &[ParsedField], other: &Ident) -> TokenStream {
         .collect()
 }
 
-pub fn take(fields: &[ParsedField], other: &Ident) -> TokenStream {
+pub(crate) fn take_with_prefix(
+    self_prefix: &str,
+    other_prefix: &str,
+    references: bool,
+    fields: &[ParsedField],
+) -> TokenStream {
     fields
         .iter()
         .map(|field| {
             let field_ident = field.ident();
             let span = field.span();
-            let self_field = quote! {self.#field_ident};
-            let other_field = quote! {#other.#field_ident};
+            let FieldNames {
+                self_field,
+                other_field,
+                deref_other_field: _,
+                deref_self_field,
+            } = FieldNames::new(field_ident, self_prefix, other_prefix, references);
             if field.structopt_flatten() {
                 quote_spanned! {span=>
-                    #self_field.take(&mut #other_field);
+                    #self_field.take(#other_field);
                 }
             } else {
                 match field.structopt_ty() {
                     StructOptTy::Vec => quote_spanned! {span=>
-                        if !#other_field.is_empty() {
-                            ::std::mem::swap(&mut #self_field, &mut #other_field);
+                        if !(#other_field).is_empty() {
+                            ::std::mem::swap(#self_field, #other_field);
                         }
                     },
                     StructOptTy::Bool
@@ -64,8 +115,8 @@ pub fn take(fields: &[ParsedField], other: &Ident) -> TokenStream {
                     | StructOptTy::OptionVec
                     | StructOptTy::Other => {
                         quote_spanned! {span=>
-                            if #other_field.is_some() {
-                                #self_field = #other_field.take();
+                            if (#other_field).is_some() {
+                                #deref_self_field = (#other_field).take();
                             }
                         }
                     }
@@ -75,17 +126,26 @@ pub fn take(fields: &[ParsedField], other: &Ident) -> TokenStream {
         .collect()
 }
 
-pub fn patch_for(fields: &[ParsedField], other: &Ident) -> TokenStream {
+pub(crate) fn patch_for_with_prefix(
+    self_prefix: &str,
+    other_prefix: &str,
+    references: bool,
+    fields: &[ParsedField],
+) -> TokenStream {
     fields
         .iter()
         .map(|field| {
             let field_ident = field.ident();
             let span = field.span();
-            let self_field = quote! {self.#field_ident};
-            let other_field = quote! {#other.#field_ident};
+            let FieldNames {
+                self_field,
+                other_field,
+                deref_self_field: _,
+                deref_other_field,
+            } = FieldNames::new(field_ident, self_prefix, other_prefix, references);
             if field.structopt_flatten() {
                 quote_spanned! {span=>
-                    #self_field.patch_for(&mut #other_field);
+                    #self_field.patch_for(#other_field);
                 }
             } else if field.subcommand() {
                 quote_spanned! {span=>
@@ -93,15 +153,17 @@ pub fn patch_for(fields: &[ParsedField], other: &Ident) -> TokenStream {
                 }
             } else {
                 match field.structopt_ty() {
-                    StructOptTy::Vec => quote_spanned! {span=>
-                        if #other_field.is_empty() {
-                            ::std::mem::swap(&mut #other_field, &mut #self_field);
+                    StructOptTy::Vec => {
+                        quote_spanned! {span=>
+                            if (#other_field).is_empty() {
+                                ::std::mem::swap(#other_field, #self_field);
+                            }
                         }
-                    },
+                    }
                     StructOptTy::Option | StructOptTy::OptionOption | StructOptTy::OptionVec => {
                         quote_spanned! {span=>
-                            if #other_field.is_none() {
-                                #other_field = #self_field.take();
+                            if (#other_field).is_none() {
+                                #deref_other_field = (#self_field).take();
                             }
                         }
                     }
@@ -114,17 +176,26 @@ pub fn patch_for(fields: &[ParsedField], other: &Ident) -> TokenStream {
         .collect()
 }
 
-pub fn take_for(fields: &[ParsedField], other: &Ident) -> TokenStream {
+pub(crate) fn take_for_with_prefix(
+    self_prefix: &str,
+    other_prefix: &str,
+    references: bool,
+    fields: &[ParsedField],
+) -> TokenStream {
     fields
         .iter()
         .map(|field| {
             let field_ident = field.ident();
             let span = field.span();
-            let self_field = quote! {self.#field_ident};
-            let other_field = quote! {#other.#field_ident};
+            let FieldNames {
+                self_field,
+                other_field,
+                deref_other_field,
+                deref_self_field: _,
+            } = FieldNames::new(field_ident, self_prefix, other_prefix, references);
             if field.structopt_flatten() {
                 quote_spanned! {span=>
-                    #self_field.take_for(&mut #other_field);
+                    #self_field.take_for(#other_field);
                 }
             } else if field.subcommand() {
                 quote_spanned! {span=>
@@ -133,21 +204,21 @@ pub fn take_for(fields: &[ParsedField], other: &Ident) -> TokenStream {
             } else {
                 match field.structopt_ty() {
                     StructOptTy::Vec => quote_spanned! {span=>
-                        if !#self_field.is_empty() {
-                            ::std::mem::swap(&mut #other_field, &mut #self_field);
+                        if !(#self_field).is_empty() {
+                            ::std::mem::swap(#other_field, #self_field);
                         }
                     },
                     StructOptTy::Option | StructOptTy::OptionOption | StructOptTy::OptionVec => {
                         quote_spanned! {span=>
-                            if #self_field.is_some() {
-                                #other_field = #self_field.take();
+                            if (#self_field).is_some() {
+                                #deref_other_field = (#self_field).take();
                             }
                         }
                     }
                     StructOptTy::Bool | StructOptTy::Other => {
                         quote_spanned! {span=>
-                            if let Some(value) = #self_field.take() {
-                                #other_field = value;
+                            if let Some(value) = (#self_field).take() {
+                                #deref_other_field = value;
                             }
                         }
                     }
@@ -157,11 +228,13 @@ pub fn take_for(fields: &[ParsedField], other: &Ident) -> TokenStream {
         .collect()
 }
 
-pub fn is_empty(fields: &[ParsedField]) -> TokenStream {
+pub(crate) fn is_empty_with_prefix(prefix: &str, fields: &[ParsedField]) -> TokenStream {
     let field_tokens = fields.iter().map(|field| {
         let field_ident = field.ident();
         let span = field.span();
-        let self_field = quote! {self.#field_ident};
+        let self_field = format!("{}{}", prefix, field_ident)
+            .parse::<TokenStream>()
+            .unwrap();
         if field.structopt_flatten() {
             quote_spanned! {span=>
                 #self_field.is_empty()
@@ -189,11 +262,13 @@ pub fn is_empty(fields: &[ParsedField]) -> TokenStream {
     }
 }
 
-pub fn is_complete(fields: &[ParsedField]) -> TokenStream {
+pub(crate) fn is_complete_with_prefix(prefix: &str, fields: &[ParsedField]) -> TokenStream {
     let field_tokens = fields.iter().map(|field| {
         let field_ident = field.ident();
         let span = field.span();
-        let self_field = quote! {self.#field_ident};
+        let self_field = format!("{}{}", prefix, field_ident)
+            .parse::<TokenStream>()
+            .unwrap();
         if field.structopt_flatten() {
             quote_spanned! {span=>
                 #self_field.is_complete()
@@ -221,11 +296,13 @@ pub fn is_complete(fields: &[ParsedField]) -> TokenStream {
     }
 }
 
-pub fn is_convertible(fields: &[ParsedField]) -> TokenStream {
+pub(crate) fn is_convertible_with_prefix(prefix: &str, fields: &[ParsedField]) -> TokenStream {
     let field_tokens = fields.iter().map(|field| {
         let field_ident = field.ident();
         let span = field.span();
-        let self_field = quote! {self.#field_ident};
+        let self_field = format!("{}{}", prefix, field_ident)
+            .parse::<TokenStream>()
+            .unwrap();
         if field.structopt_flatten() {
             quote_spanned! {span=>
                 #self_field.is_convertible()
@@ -254,7 +331,7 @@ pub fn is_convertible(fields: &[ParsedField]) -> TokenStream {
     }
 }
 
-pub fn from(fields: &[ParsedField], other: &Ident) -> TokenStream {
+pub(crate) fn from(fields: &[ParsedField], other: &Ident) -> TokenStream {
     let field_tokens = fields.iter().map(|field| {
         let field_ident = field.ident();
         let span = field.span();
@@ -287,7 +364,7 @@ pub fn from(fields: &[ParsedField], other: &Ident) -> TokenStream {
     }
 }
 
-pub fn try_from(fields: &[ParsedField]) -> TokenStream {
+pub(crate) fn try_from(fields: &[ParsedField]) -> TokenStream {
     let field_tokens = fields.iter().map(|field| {
         let field_ident = field.ident();
         let span = field.span();
@@ -322,4 +399,32 @@ pub fn try_from(fields: &[ParsedField]) -> TokenStream {
             #(#field_tokens)*
         })
     }
+}
+
+pub(crate) fn patch(fields: &[ParsedField]) -> TokenStream {
+    patch_with_prefix("self.", "other.", false, fields)
+}
+
+pub(crate) fn take(fields: &[ParsedField]) -> TokenStream {
+    take_with_prefix("self.", "other.", false, fields)
+}
+
+pub(crate) fn patch_for(fields: &[ParsedField]) -> TokenStream {
+    patch_for_with_prefix("self.", "other.", false, fields)
+}
+
+pub(crate) fn take_for(fields: &[ParsedField]) -> TokenStream {
+    take_for_with_prefix("self.", "other.", false, fields)
+}
+
+pub(crate) fn is_empty(fields: &[ParsedField]) -> TokenStream {
+    is_empty_with_prefix("self.", fields)
+}
+
+pub(crate) fn is_complete(fields: &[ParsedField]) -> TokenStream {
+    is_complete_with_prefix("self.", fields)
+}
+
+pub(crate) fn is_convertible(fields: &[ParsedField]) -> TokenStream {
+    is_convertible_with_prefix("self.", fields)
 }

@@ -66,7 +66,7 @@ pub fn generate_for_enum(variants: &[ParsedVariant]) -> TokenStream {
                     }
                 }
             }
-            FieldType::Named | FieldType::Unit => {
+            FieldType::Named(_) | FieldType::Unit => {
                 quote! {}
             }
         })
@@ -85,7 +85,7 @@ pub fn patch_for_enum(variants: &[ParsedVariant]) -> TokenStream {
                     }
                 }
             }
-            FieldType::Named | FieldType::Unit => {
+            FieldType::Named(_) | FieldType::Unit => {
                 // TODO
                 quote! {}
             }

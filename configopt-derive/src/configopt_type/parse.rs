@@ -11,7 +11,7 @@ use proc_macro_roids::IdentExt;
 use serde_parser::SerdeAttr;
 use std::{convert::Infallible, str::FromStr};
 use structopt_parser::StructOptAttr;
-use syn::{parse_quote, spanned::Spanned, Expr, Field, Fields, Ident, Type, Variant};
+use syn::{parse_quote, spanned::Spanned, Attribute, Expr, Field, Fields, Ident, Type, Variant};
 
 pub use serde_parser::trim_attr as trim_serde_attr;
 pub use structopt_parser::{
@@ -83,6 +83,7 @@ pub fn has_configopt_fields(parsed: &[ParsedField]) -> bool {
     parsed.iter().any(|f| f.ident() == "generate_config")
 }
 
+#[derive(Clone)]
 pub struct ParsedField {
     ident: Ident,
     structopt_ty: StructOptTy,
@@ -98,15 +99,21 @@ pub struct ParsedField {
 }
 
 impl ParsedField {
-    pub fn new(field: &Field, structopt_rename: CasingStyle, serde_rename: CasingStyle) -> Self {
+    pub fn new(
+        field: &mut Field,
+        structopt_rename: CasingStyle,
+        serde_rename: CasingStyle,
+        retained_attrs: &[Ident],
+    ) -> Self {
         let ident = field.ident.clone().expect("field ident to exist");
-        let ty = &field.ty;
-        let mut_ty = &mut field.ty.clone();
-        let inner_ty = inner_ty(&mut mut_ty.clone()).clone();
+        let structopt_ty = StructOptTy::from_syn_ty(&field.ty);
+        let ty = &mut field.ty;
+        let inner_ty = inner_ty(ty);
+        let configopt_inner_ty = configopt_ident(&inner_ty);
         let structopt_attrs = structopt_parser::parse_attrs(&field.attrs);
         let serde_attrs = serde_parser::parse_attrs(&field.attrs);
         let configopt_attrs = configopt_parser::parse_attrs(&field.attrs);
-
+        let serde_name = serde_rename.rename(&ident.to_string());
         let structopt_name = structopt_attrs
             .iter()
             .find_map(|a| match &a {
@@ -114,29 +121,65 @@ impl ParsedField {
                 _ => None,
             })
             .unwrap_or_else(|| structopt_rename.rename(&ident.to_string()));
+        let structopt_flatten = structopt_attrs.iter().any(|a| match a {
+            StructOptAttr::Flatten => true,
+            _ => false,
+        });
+        let subcommand = structopt_attrs.iter().any(|a| match a {
+            StructOptAttr::Subcommand => true,
+            _ => false,
+        });
 
-        let serde_name = serde_rename.rename(&ident.to_string());
+        // The below logic converts the field into a `ConfigOpt` field
+
+        // If the field is flattened or a subcommand, modify the type with the configopt type prefix
+        if structopt_flatten || subcommand {
+            *inner_ty = configopt_inner_ty.clone();
+        }
+
+        retain_attrs(&mut field.attrs, &retained_attrs);
+
+        // If this field was a `Vec` we need to add a default value to allow deserializing the
+        // `ConfigOpt` type from an empty input.
+        if let StructOptTy::Vec = structopt_ty {
+            if retained_attrs.iter().any(|a| a == "serde") {
+                field.attrs.push(parse_quote! {#[serde(default)]})
+            }
+        }
+
+        // If the field is not already, wrap its type in an `Option`. This guarantees that the
+        // `ConfigOpt` struct can be parsed regardless of complete CLI input.
+        if let StructOptTy::Bool | StructOptTy::Other = structopt_ty {
+            // If it was a flattened field all of its fields will be optional so it does not need to
+            // be wrapped in an `Option`
+            if !structopt_flatten {
+                field.ty = parse_quote!(Option<#ty>);
+            }
+            // If this field was a `bool` we need to add a default of `true` now that it is wrapped in
+            // an `Option`. This preserves the same behavior as if we just had a `bool`, but allows us
+            // to detect if the `bool` even has a value. Essentially, it adds a third state of not set
+            // (None) to this field.
+            if let StructOptTy::Bool = structopt_ty {
+                field
+                    .attrs
+                    .push(parse_quote! {#[structopt(default_value = "true")]})
+            }
+        }
 
         Self {
             ident,
-            structopt_ty: StructOptTy::from_syn_ty(&ty),
-            configopt_inner_ty: configopt_ident(&inner_ty),
+            structopt_ty,
+            configopt_inner_ty,
             span: field.span(),
             structopt_rename,
             structopt_name,
             serde_name,
-            structopt_flatten: structopt_attrs.iter().any(|a| match a {
-                StructOptAttr::Flatten => true,
-                _ => false,
-            }),
+            structopt_flatten,
             serde_flatten: serde_attrs.iter().any(|a| match a {
                 SerdeAttr::Flatten => true,
                 _ => false,
             }),
-            subcommand: structopt_attrs.iter().any(|a| match a {
-                StructOptAttr::Subcommand => true,
-                _ => false,
-            }),
+            subcommand,
             to_os_string: configopt_attrs.into_iter().find_map(|a| match a {
                 ConfigOptAttr::ToOsString(expr) => Some(expr),
                 _ => None,
@@ -152,6 +195,7 @@ impl ParsedField {
         &self.structopt_ty
     }
 
+    #[allow(unused)]
     pub fn configopt_inner_ty(&self) -> &Ident {
         &self.configopt_inner_ty
     }
@@ -191,17 +235,28 @@ impl Spanned for ParsedField {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub enum FieldType {
-    Named,
+    Named(Vec<ParsedField>),
     Unnamed,
     Unit,
 }
 
-impl From<&Fields> for FieldType {
-    fn from(fields: &Fields) -> Self {
+impl FieldType {
+    fn new(
+        fields: &mut Fields,
+        structopt_rename: CasingStyle,
+        serde_rename: CasingStyle,
+        retained_attrs: &[Ident],
+    ) -> Self {
         match fields {
-            Fields::Named(_) => Self::Named,
+            Fields::Named(named_fields) => Self::Named(
+                named_fields
+                    .named
+                    .iter_mut()
+                    .map(|f| ParsedField::new(f, structopt_rename, serde_rename, retained_attrs))
+                    .collect(),
+            ),
             Fields::Unnamed(_) => Self::Unnamed,
             Fields::Unit => Self::Unit,
         }
@@ -217,17 +272,42 @@ pub struct ParsedVariant {
 }
 
 impl ParsedVariant {
-    pub fn new(type_ident: &Ident, variant: &Variant) -> Self {
+    pub fn new(
+        type_ident: &Ident,
+        variant: &mut Variant,
+        structopt_rename: CasingStyle,
+        serde_rename: CasingStyle,
+        retained_attrs: &[Ident],
+    ) -> Self {
         let variant_ident = &variant.ident;
         let full_ident = parse_quote! {#type_ident::#variant_ident};
         let configopt_type_ident = configopt_ident(&type_ident);
         let full_configopt_ident = parse_quote! {#configopt_type_ident::#variant_ident};
 
+        // The below logic converts the variant into a `ConfigOpt` variant
+        let field_type = FieldType::new(
+            &mut variant.fields,
+            structopt_rename,
+            serde_rename,
+            retained_attrs,
+        );
+        if let Fields::Unnamed(fields) = &mut variant.fields {
+            if fields.unnamed.len() > 1 {
+                panic!(
+                    "`ConfigOpt` cannot be derived on unnamed enums with a length greater than 1"
+                );
+            }
+            // Modify the type with the configopt type prefix
+            let field = &mut fields.unnamed[0];
+            let ty = inner_ty(&mut field.ty);
+            *ty = configopt_ident(ty);
+        }
+
         Self {
             full_ident,
             full_configopt_ident,
             span: variant.span(),
-            field_type: (&variant.fields).into(),
+            field_type,
             // TODO: Actually lookup the `structopt` name
             structopt_name: variant_ident.to_string().to_kebab_case(),
         }
@@ -241,8 +321,8 @@ impl ParsedVariant {
         &self.full_configopt_ident
     }
 
-    pub fn field_type(&self) -> FieldType {
-        self.field_type
+    pub fn field_type(&self) -> &FieldType {
+        &self.field_type
     }
 
     pub fn structopt_name(&self) -> &str {
@@ -253,5 +333,14 @@ impl ParsedVariant {
 impl Spanned for ParsedVariant {
     fn span(&self) -> Span {
         self.span
+    }
+}
+
+// Only retain attributes we have explicitly opted to preserve
+pub fn retain_attrs(attrs: &mut Vec<Attribute>, retained_attrs: &[Ident]) {
+    attrs.retain(|a| retained_attrs.iter().any(|i| a.path.is_ident(i)));
+    for attr in attrs {
+        trim_structopt_attr(attr);
+        trim_serde_attr(attr);
     }
 }

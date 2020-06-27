@@ -2,7 +2,8 @@ use configopt::ConfigOpt;
 use std::convert::TryFrom;
 use structopt::StructOpt;
 
-#[derive(ConfigOpt, StructOpt)]
+#[derive(ConfigOpt, StructOpt, Debug)]
+#[configopt(derive(Debug))]
 struct MyStruct {
     #[structopt(long)]
     value: String,
@@ -10,7 +11,8 @@ struct MyStruct {
     command: MyEnum,
 }
 
-#[derive(ConfigOpt, StructOpt)]
+#[derive(ConfigOpt, StructOpt, Debug)]
+#[configopt(derive(Debug))]
 enum MyEnum {
     Cmd1,
     Cmd2,
