@@ -249,8 +249,9 @@ pub trait ConfigOpt: Sized + StructOpt {
                 let mut s = Self::try_from_iter_with_defaults(&iter, &configopt)?;
                 // Take into account any values from config files by taking the values from the
                 // configopt type. This is needed for types that do not always set their value if
-                // a default is set (eg Option<T>)
-                <Self as ConfigOpt>::patch(&mut s, &mut configopt);
+                // a default is set (eg Option<T>). We must use `take` instead of `patch` to be
+                // sure to override any default values with values from the config file.
+                <Self as ConfigOpt>::take(&mut s, &mut configopt);
                 Ok(s)
             }
             Err(e) => {

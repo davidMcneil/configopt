@@ -284,7 +284,7 @@ impl ConfigOptConstruct {
                         }
 
                         fn take(&mut self, other: &mut Self::ConfigOptType) {
-                            other.patch_for(self);
+                            other.take_for(self);
                         }
                     }
                 }
@@ -439,7 +439,7 @@ impl ConfigOptConstruct {
                         }
 
                         fn take(&mut self, other: &mut Self::ConfigOptType) {
-                            other.patch_for(self);
+                            other.take_for(self);
                         }
                     }
                 }
