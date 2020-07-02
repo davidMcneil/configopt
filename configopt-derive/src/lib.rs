@@ -28,18 +28,29 @@ pub fn configopt_derive(ast: proc_macro::TokenStream) -> proc_macro::TokenStream
 
 #[proc_macro_attribute]
 pub fn configopt_fields(
-    _attr: proc_macro::TokenStream,
+    attr: proc_macro::TokenStream,
     item: proc_macro::TokenStream,
 ) -> proc_macro::TokenStream {
+    use crate::configopt_type::parse::configopt_fields_attr_parser::{
+        self as attr_parser, ConfigOptFieldsAttr,
+    };
+
+    let attrs = attr_parser::parse(attr);
+    let hidden = attrs
+        .into_iter()
+        .find_map(|a| match a {
+            ConfigOptFieldsAttr::Hidden(expr) => Some(expr),
+        })
+        .unwrap_or_else(|| parse_quote! {false});
     let mut ast = parse_macro_input!(item as DeriveInput);
 
     let additional_fields = parse_quote!({
         /// Paths to config files to read
-        #[structopt(long = "config-files")]
+        #[structopt(long = "config-files", hidden = #hidden)]
         #[serde(skip)]
         config_files: Vec<::std::path::PathBuf>,
         /// Generate a TOML config
-        #[structopt(long = "generate-config")]
+        #[structopt(long = "generate-config", hidden = #hidden)]
         #[serde(skip)]
         generate_config: bool,
     });

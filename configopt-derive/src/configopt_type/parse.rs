@@ -1,5 +1,6 @@
 #[macro_use]
 mod attribute_trimmer;
+pub mod configopt_fields_attr_parser;
 mod configopt_parser;
 mod serde_parser;
 mod structopt_parser;

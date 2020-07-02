@@ -1,6 +1,7 @@
 pub mod generate;
 pub mod parse;
 
+use generate::default_config_files::Attribute as DefaultConfigFilesAttribute;
 use parse::{CasingStyle, ParsedField, ParsedVariant};
 use proc_macro2::TokenStream;
 use proc_macro_roids::DeriveInputExt;
@@ -8,7 +9,7 @@ use quote::quote;
 use syn::{parse_quote, punctuated::Punctuated, Data, DeriveInput, Fields, Ident, Token};
 
 pub enum ConfigOptConstruct {
-    Struct(Ident, Option<String>, Vec<ParsedField>),
+    Struct(Ident, Option<DefaultConfigFilesAttribute>, Vec<ParsedField>),
     Enum(Ident, Vec<ParsedVariant>),
 }
 
@@ -21,18 +22,9 @@ impl ConfigOptConstruct {
         configopt_type.ident = parse::configopt_ident(&configopt_type.ident);
 
         // Check if we have a default config file
-        let default_config_file = if let Some(default_config_file) = configopt_type
+        let default_config_file = configopt_type
             .tag_parameter(&parse_quote!(configopt), &parse_quote!(default_config_file))
-        {
-            match default_config_file {
-                syn::NestedMeta::Lit(syn::Lit::Str(default_config_file)) => {
-                    Some(default_config_file.value())
-                }
-                _ => panic!("`configopt(default_config_file)` expected string literal"),
-            }
-        } else {
-            None
-        };
+            .map(|a| a.into());
 
         // Get a list of attributes to retain on the configopt type
         let mut retained_attrs = configopt_type
@@ -138,7 +130,7 @@ impl ConfigOptConstruct {
                 let configopt_from = struct_type::from(&parsed_fields, &other);
                 let configopt_try_from = struct_type::try_from(&parsed_fields);
                 let default_config_files =
-                    generate::default_config_files::generate(default_config_file.as_deref());
+                    generate::default_config_files::generate(default_config_file.as_ref());
                 let handle_config_files_generate =
                     generate::handle_config_files::generate_for_struct(parsed_fields.as_slice());
                 let handle_config_files_patch = generate::handle_config_files::patch_for_struct(

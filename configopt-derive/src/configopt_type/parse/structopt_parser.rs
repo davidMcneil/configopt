@@ -44,6 +44,7 @@ impl Parse for StructOptAttr {
                 match input.parse::<Expr>() {
                     Ok(_) => {
                         if name_str == "name" {
+                            // TODO
                             panic!("`configopt` parsing `structopt` only supports string literal for argument name")
                         }
                     }
