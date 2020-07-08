@@ -144,8 +144,14 @@ pub(crate) fn patch_for_with_prefix(
                 deref_other_field,
             } = FieldNames::new(field_ident, self_prefix, other_prefix, references);
             if field.structopt_flatten() {
-                quote_spanned! {span=>
-                    #self_field.patch_for(#other_field);
+                if field.no_wrap() {
+                    quote_spanned! {span=>
+                        #other_field.patch(#self_field);
+                    }
+                } else {
+                    quote_spanned! {span=>
+                        #self_field.patch_for(#other_field);
+                    }
                 }
             } else if field.subcommand() {
                 quote_spanned! {span=>
@@ -194,8 +200,14 @@ pub(crate) fn take_for_with_prefix(
                 deref_self_field: _,
             } = FieldNames::new(field_ident, self_prefix, other_prefix, references);
             if field.structopt_flatten() {
-                quote_spanned! {span=>
-                    #self_field.take_for(#other_field);
+                if field.no_wrap() {
+                    quote_spanned! {span=>
+                        #other_field.take(#self_field);
+                    }
+                } else {
+                    quote_spanned! {span=>
+                        #self_field.take_for(#other_field);
+                    }
                 }
             } else if field.subcommand() {
                 quote_spanned! {span=>

@@ -7,7 +7,7 @@ use syn::{
 #[derive(PartialEq)]
 #[allow(clippy::large_enum_variant)]
 pub enum ConfigOptAttr {
-    Nested,
+    NoWrap,
     ToOsString(Expr),
 }
 
@@ -40,7 +40,7 @@ impl Parse for ConfigOptAttr {
         } else {
             // Attributes represented with a sole identifier.
             Ok(match name_str.as_ref() {
-                "nested" => ConfigOptAttr::Nested,
+                "nowrap" => ConfigOptAttr::NoWrap,
                 s => panic!("`configopt` unrecognized sole identifier attribute {}", s),
             })
         }

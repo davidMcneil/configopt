@@ -93,6 +93,7 @@ pub struct ParsedField {
     structopt_flatten: bool,
     serde_flatten: bool,
     subcommand: bool,
+    no_wrap: bool,
     structopt_rename: CasingStyle,
     structopt_name: String,
     serde_name: String,
@@ -107,13 +108,23 @@ impl ParsedField {
         retained_attrs: &[Ident],
     ) -> Self {
         let ident = field.ident.clone().expect("field ident to exist");
+
+        let configopt_attrs = configopt_parser::parse_attrs(&field.attrs);
+        let no_wrap = configopt_attrs
+            .iter()
+            .any(|a| matches!(a, ConfigOptAttr::NoWrap));
+
         let structopt_ty = StructOptTy::from_syn_ty(&field.ty);
         let ty = &mut field.ty;
         let inner_ty = inner_ty(ty);
-        let configopt_inner_ty = configopt_ident(&inner_ty);
+        let configopt_inner_ty = if no_wrap {
+            inner_ty.clone()
+        } else {
+            configopt_ident(&inner_ty)
+        };
+
         let structopt_attrs = structopt_parser::parse_attrs(&field.attrs);
         let serde_attrs = serde_parser::parse_attrs(&field.attrs);
-        let configopt_attrs = configopt_parser::parse_attrs(&field.attrs);
         let serde_name = serde_rename.rename(&ident.to_string());
         let structopt_name = structopt_attrs
             .iter()
@@ -181,6 +192,7 @@ impl ParsedField {
                 _ => false,
             }),
             subcommand,
+            no_wrap,
             to_os_string: configopt_attrs.into_iter().find_map(|a| match a {
                 ConfigOptAttr::ToOsString(expr) => Some(expr),
                 _ => None,
@@ -211,6 +223,10 @@ impl ParsedField {
 
     pub fn subcommand(&self) -> bool {
         self.subcommand
+    }
+
+    pub fn no_wrap(&self) -> bool {
+        self.no_wrap
     }
 
     pub fn structopt_rename(&self) -> CasingStyle {
