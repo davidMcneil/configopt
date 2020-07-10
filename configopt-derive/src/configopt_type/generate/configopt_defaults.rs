@@ -28,21 +28,15 @@ fn to_os_string(field: &ParsedField) -> TokenStream {
     };
     // Code to join a Vec<OsString> into a OsString
     let join_os_str_vec = quote! {
-        // TODO: Setting defaults for vecs does not really work and needs more testing
-        // let mut result = ::std::ffi::OsString::new();
-        // for (i, v) in vec.iter().enumerate() {
-        //     if i != 0 {
-        //         // TODO: configurable separator
-        //         result.push(" ");
-        //     }
-        //     result.push(&v);
-        // }
-        // if result.is_empty() {
-        //     None
-        // } else {
-        //     Some(result)
-        // }
-        None
+        let mut result = ::std::ffi::OsString::new();
+        for (i, v) in vec.iter().enumerate() {
+            if i != 0 {
+                // TODO: configurable separator
+                result.push(" ");
+            }
+            result.push(&v);
+        }
+        Some(result)
     };
     // Based on the type of the field convert it to a String. Everything is wrapped
     // in an Option because this is always run on a `ConfigOpt` type.
@@ -51,11 +45,15 @@ fn to_os_string(field: &ParsedField) -> TokenStream {
     match field.structopt_ty() {
         StructOptTy::Vec => quote_spanned! {span=>
             {
-                let vec = #self_field.iter()
-                    .map(|value| #to_os_string)
-                    .flatten()
-                    .collect::<Vec<_>>();
-                #join_os_str_vec
+                if let Some(value) = &#self_field {
+                    let vec = value.iter()
+                        .map(|value| #to_os_string)
+                        .flatten()
+                        .collect::<Vec<_>>();
+                    #join_os_str_vec
+                } else {
+                    None
+                }
             }
         },
         StructOptTy::Bool | StructOptTy::Option | StructOptTy::Other => quote_spanned! {span=>

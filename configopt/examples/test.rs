@@ -1,19 +1,13 @@
-use configopt::ConfigOpt;
+use configopt::{configopt_fields, ConfigOpt};
+use serde::Deserialize;
 use structopt::StructOpt;
 
-#[derive(ConfigOpt, StructOpt)]
-pub enum Empty {
-    Test {
-        #[structopt()]
-        x: Option<u32>,
-        #[structopt(flatten)]
-        testing: Testing,
-    },
+#[configopt_fields]
+#[derive(ConfigOpt, StructOpt, Debug, Deserialize, PartialEq)]
+#[configopt(derive(Debug, PartialEq), attrs(serde))]
+#[serde(deny_unknown_fields)]
+struct MyStruct {
+    #[structopt(long, default_value = "true")]
+    maybe: Option<bool>,
 }
-#[derive(ConfigOpt, StructOpt)]
-pub struct Testing {
-    #[structopt()]
-    x: Option<String>,
-}
-
 fn main() {}

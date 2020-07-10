@@ -24,7 +24,7 @@ fn test_configopt_with_optional_bool() {
 
     let c = ConfigOptMyStruct {
         maybe: Some(true),
-        config_files: Vec::new(),
+        config_files: None,
         generate_config: None,
     };
     let s = MyStruct::try_from_iter_with_defaults(&["app"], &c).unwrap();
@@ -38,7 +38,7 @@ fn test_configopt_with_optional_bool() {
 
     let c = ConfigOptMyStruct {
         maybe: Some(false),
-        config_files: Vec::new(),
+        config_files: None,
         generate_config: None,
     };
     let s = MyStruct::try_from_iter_with_defaults(&["app"], &c).unwrap();
@@ -75,7 +75,7 @@ fn test_configopt_with_bool() {
 
     let c = ConfigOptMyStruct {
         maybe: Some(true),
-        config_files: Vec::new(),
+        config_files: None,
         generate_config: None,
     };
     let s = MyStruct::try_from_iter_with_defaults(&["app"], &c).unwrap();
@@ -86,7 +86,7 @@ fn test_configopt_with_bool() {
 
     let c = ConfigOptMyStruct {
         maybe: Some(false),
-        config_files: Vec::new(),
+        config_files: None,
         generate_config: None,
     };
     let s = MyStruct::try_from_iter_with_defaults(&["app"], &c).unwrap();

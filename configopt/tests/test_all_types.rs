@@ -104,14 +104,14 @@ fn test_configopt_generate_config() {
     assert_eq!(
         ConfigOptMyStruct {
             maybe: None,
-            numbers: Vec::new(),
+            numbers: None,
             optional: None,
             not_optional: None,
             double_optional: None,
             optional_vec: None,
             path: None,
             cmd: None,
-            config_files: Vec::new(),
+            config_files: None,
             generate_config: Some(true),
         },
         ConfigOptMyStruct::from_iter_safe(&["app", "--generate-config"]).unwrap()
@@ -119,7 +119,7 @@ fn test_configopt_generate_config() {
     assert_eq!(
         ConfigOptMyStruct {
             maybe: None,
-            numbers: Vec::new(),
+            numbers: None,
             optional: None,
             not_optional: None,
             double_optional: None,
@@ -131,12 +131,12 @@ fn test_configopt_generate_config() {
                 flat_struct: ConfigOptFlatStruct {
                     flat_optional: None,
                     flat_maybe: None,
-                    flat_numbers: Vec::new(),
+                    flat_numbers: None,
                 },
-                config_files: Vec::new(),
+                config_files: None,
                 generate_config: Some(true)
             })),
-            config_files: Vec::new(),
+            config_files: None,
             generate_config: None,
         },
         ConfigOptMyStruct::from_iter_safe(&["app", "cmd3", "--generate-config"]).unwrap()
@@ -144,7 +144,7 @@ fn test_configopt_generate_config() {
     assert_eq!(
         ConfigOptMyStruct {
             maybe: None,
-            numbers: Vec::new(),
+            numbers: None,
             optional: None,
             not_optional: None,
             double_optional: None,
@@ -156,12 +156,12 @@ fn test_configopt_generate_config() {
                 flat_struct: ConfigOptFlatStruct {
                     flat_optional: None,
                     flat_maybe: None,
-                    flat_numbers: Vec::new(),
+                    flat_numbers: None,
                 },
-                config_files: Vec::new(),
+                config_files: None,
                 generate_config: Some(true)
             })),
-            config_files: Vec::new(),
+            config_files: None,
             generate_config: Some(true),
         },
         ConfigOptMyStruct::from_iter_safe(&[
@@ -175,7 +175,7 @@ fn test_configopt_generate_config() {
     assert_eq!(
         ConfigOptMyStruct {
             maybe: None,
-            numbers: Vec::new(),
+            numbers: None,
             optional: None,
             not_optional: None,
             double_optional: None,
@@ -187,12 +187,12 @@ fn test_configopt_generate_config() {
                 flat_struct: ConfigOptFlatStruct {
                     flat_optional: None,
                     flat_maybe: None,
-                    flat_numbers: Vec::new(),
+                    flat_numbers: None,
                 },
-                config_files: Vec::new(),
+                config_files: None,
                 generate_config: Some(false)
             })),
-            config_files: Vec::new(),
+            config_files: None,
             generate_config: Some(true),
         },
         ConfigOptMyStruct::from_iter_safe(&[
@@ -210,14 +210,14 @@ fn test_configopt_from_cli_no_args() {
     assert_eq!(
         ConfigOptMyStruct {
             maybe: None,
-            numbers: Vec::new(),
+            numbers: None,
             optional: None,
             not_optional: None,
             double_optional: None,
             optional_vec: None,
             path: None,
             cmd: None,
-            config_files: Vec::new(),
+            config_files: None,
             generate_config: None
         },
         ConfigOptMyStruct::from_iter_safe(&["app"]).unwrap()
@@ -225,14 +225,14 @@ fn test_configopt_from_cli_no_args() {
     assert_eq!(
         ConfigOptMyStruct {
             maybe: None,
-            numbers: Vec::new(),
+            numbers: None,
             optional: None,
             not_optional: None,
             double_optional: None,
             optional_vec: None,
             path: None,
             cmd: Some(ConfigOptMyEnum::Cmd1),
-            config_files: Vec::new(),
+            config_files: None,
             generate_config: None
         },
         ConfigOptMyStruct::from_iter_safe(&["app", "cmd1"]).unwrap()
@@ -240,7 +240,7 @@ fn test_configopt_from_cli_no_args() {
     assert_eq!(
         ConfigOptMyStruct {
             maybe: None,
-            numbers: Vec::new(),
+            numbers: None,
             optional: None,
             not_optional: None,
             double_optional: None,
@@ -250,7 +250,7 @@ fn test_configopt_from_cli_no_args() {
                 field_1: None,
                 field_2: None,
             }),
-            config_files: Vec::new(),
+            config_files: None,
             generate_config: None
         },
         ConfigOptMyStruct::from_iter_safe(&["app", "cmd2"]).unwrap()
@@ -258,7 +258,7 @@ fn test_configopt_from_cli_no_args() {
     assert_eq!(
         ConfigOptMyStruct {
             maybe: None,
-            numbers: Vec::new(),
+            numbers: None,
             optional: None,
             not_optional: None,
             double_optional: None,
@@ -270,12 +270,12 @@ fn test_configopt_from_cli_no_args() {
                 flat_struct: ConfigOptFlatStruct {
                     flat_optional: None,
                     flat_maybe: None,
-                    flat_numbers: Vec::new(),
+                    flat_numbers: None,
                 },
-                config_files: Vec::new(),
+                config_files: None,
                 generate_config: None
             })),
-            config_files: Vec::new(),
+            config_files: None,
             generate_config: None
         },
         ConfigOptMyStruct::from_iter_safe(&["app", "cmd3"]).unwrap()
@@ -291,14 +291,14 @@ fn test_configopt_from_cli_all_args() {
     assert_eq!(
         ConfigOptMyStruct {
             maybe: Some(true),
-            numbers: vec![1, 2, 3],
+            numbers: Some(vec![1, 2, 3]),
             optional: Some(String::from("from_cli1")),
             not_optional: Some(String::from("from_cli2")),
             double_optional: Some(Some(1.5)),
             optional_vec: Some(vec![4, 5]),
             path: Some(PathBuf::from("/some/path")),
             cmd: Some(ConfigOptMyEnum::Cmd1),
-            config_files: Vec::new(),
+            config_files: None,
             generate_config: None
         },
         ConfigOptMyStruct::from_iter_safe(cli).unwrap()
@@ -310,7 +310,7 @@ fn test_configopt_from_cli_all_args() {
     assert_eq!(
         ConfigOptMyStruct {
             maybe: Some(true),
-            numbers: vec![1, 2, 3],
+            numbers: Some(vec![1, 2, 3]),
             optional: Some(String::from("from_cli1")),
             not_optional: Some(String::from("from_cli2")),
             double_optional: Some(Some(1.5)),
@@ -320,7 +320,7 @@ fn test_configopt_from_cli_all_args() {
                 field_1: Some(String::from("from_cli3")),
                 field_2: Some(String::from("from_cli4"))
             }),
-            config_files: Vec::new(),
+            config_files: None,
             generate_config: None
         },
         ConfigOptMyStruct::from_iter_safe(cli).unwrap()
@@ -332,7 +332,7 @@ fn test_configopt_from_cli_all_args() {
     assert_eq!(
         ConfigOptMyStruct {
             maybe: Some(true),
-            numbers: vec![1, 2, 3],
+            numbers: Some(vec![1, 2, 3]),
             optional: Some(String::from("from_cli1")),
             not_optional: Some(String::from("from_cli2")),
             double_optional: Some(Some(1.5)),
@@ -344,12 +344,12 @@ fn test_configopt_from_cli_all_args() {
                 flat_struct: ConfigOptFlatStruct {
                     flat_optional: Some(6),
                     flat_maybe: Some(true),
-                    flat_numbers: vec![7],
+                    flat_numbers: Some(vec![7]),
                 },
-                config_files: Vec::new(),
+                config_files: None,
                 generate_config: None
             })),
-            config_files: Vec::new(),
+            config_files: None,
             generate_config: None
         },
         ConfigOptMyStruct::from_iter_safe(cli).unwrap()
@@ -369,10 +369,10 @@ fn test_configopt_from_empty_file() {
     cli.push(&config_arg);
 
     let mut s = ConfigOptMyStruct::from_iter_safe(cli).unwrap();
-    assert_eq!(1, s.config_files.len());
+    assert_eq!(1, s.config_files.as_ref().unwrap().len());
     match s.cmd.as_ref().unwrap() {
         ConfigOptMyEnum::Cmd3(s) => {
-            assert_eq!(1, s.config_files.len());
+            assert_eq!(1, s.config_files.as_ref().unwrap().len());
         }
         _ => unreachable!(),
     }
@@ -478,14 +478,14 @@ fn test_take_for() {
 
     let mut c = ConfigOptMyStruct {
         maybe: None,
-        numbers: Vec::new(),
+        numbers: None,
         optional: Some(String::from("configopt_optional")),
         not_optional: Some(String::from("configopt_not_optional")),
         double_optional: None,
         optional_vec: None,
         path: Some(PathBuf::from("/some/path")),
         cmd: None,
-        config_files: Vec::new(),
+        config_files: None,
         generate_config: None,
     };
     let mut s =
@@ -501,14 +501,14 @@ fn test_patch_for() {
 
     let mut c = ConfigOptMyStruct {
         maybe: None,
-        numbers: Vec::new(),
+        numbers: None,
         optional: Some(String::from("optional_from_configopt")),
         not_optional: Some(String::from("not_optional_from_configopt")),
         double_optional: None,
         optional_vec: None,
         path: Some(PathBuf::from("/some/path")),
         cmd: None,
-        config_files: Vec::new(),
+        config_files: None,
         generate_config: None,
     };
 
@@ -559,14 +559,14 @@ fn test_from() {
     let c1 = ConfigOptMyStruct::from(m);
     let c2 = ConfigOptMyStruct {
         maybe: Some(true),
-        numbers: vec![1, 2, 3],
+        numbers: Some(vec![1, 2, 3]),
         optional: None,
         not_optional: Some(String::from("testing123")),
         double_optional: Some(Some(5.6)),
         optional_vec: None,
         path: Some(PathBuf::from("/test/path")),
         cmd: Some(ConfigOptMyEnum::Cmd1),
-        config_files: Vec::new(),
+        config_files: Some(Vec::new()),
         generate_config: Some(false),
     };
     assert_eq!(c1, c2);
@@ -599,25 +599,25 @@ fn test_from() {
     let f = ConfigOptFlatStruct {
         flat_optional: None,
         flat_maybe: Some(true),
-        flat_numbers: vec![4, 5, 6],
+        flat_numbers: Some(vec![4, 5, 6]),
     };
     let a = ConfigOptAnotherStruct {
         field_a: Some(String::from("another_struct_test")),
         field_b: None,
         flat_struct: f,
-        config_files: Vec::new(),
+        config_files: Some(Vec::new()),
         generate_config: Some(false),
     };
     let c2 = ConfigOptMyStruct {
         maybe: Some(true),
-        numbers: vec![1, 2, 3],
+        numbers: Some(vec![1, 2, 3]),
         optional: None,
         not_optional: Some(String::from("testing123")),
         double_optional: Some(Some(5.6)),
         optional_vec: None,
         path: Some(PathBuf::from("/test/path")),
         cmd: Some(ConfigOptMyEnum::Cmd3(a)),
-        config_files: Vec::new(),
+        config_files: Some(Vec::new()),
         generate_config: Some(false),
     };
     assert_eq!(c1, c2);
@@ -629,14 +629,14 @@ fn test_try_from() {
 
     let mut c = ConfigOptMyStruct {
         maybe: Some(true),
-        numbers: vec![1, 2, 3],
+        numbers: Some(vec![1, 2, 3]),
         optional: None,
         not_optional: None,
         double_optional: Some(Some(5.6)),
         optional_vec: None,
         path: Some(PathBuf::from("/test/path")),
         cmd: Some(ConfigOptMyEnum::Cmd1),
-        config_files: Vec::new(),
+        config_files: None,
         generate_config: None,
     };
     assert!(!c.is_convertible());
@@ -663,38 +663,38 @@ fn test_try_from() {
     let f = ConfigOptFlatStruct {
         flat_optional: None,
         flat_maybe: None,
-        flat_numbers: vec![4, 5, 6],
+        flat_numbers: Some(vec![4, 5, 6]),
     };
     let a = ConfigOptAnotherStruct {
         field_a: None,
         field_b: None,
         flat_struct: f,
-        config_files: Vec::new(),
+        config_files: None,
         generate_config: Some(false),
     };
     let mut c = ConfigOptMyStruct {
         maybe: Some(true),
-        numbers: vec![1, 2, 3],
+        numbers: Some(vec![1, 2, 3]),
         optional: None,
         not_optional: Some(String::from("testing123")),
         double_optional: Some(Some(5.6)),
         optional_vec: None,
         path: Some(PathBuf::from("/test/path")),
         cmd: Some(ConfigOptMyEnum::Cmd3(a)),
-        config_files: Vec::new(),
+        config_files: None,
         generate_config: None,
     };
     assert!(!c.is_convertible());
     let f = ConfigOptFlatStruct {
         flat_optional: None,
         flat_maybe: None,
-        flat_numbers: vec![4, 5, 6],
+        flat_numbers: Some(vec![4, 5, 6]),
     };
     let a = ConfigOptAnotherStruct {
         field_a: Some(String::from("another_struct_test")),
         field_b: None,
         flat_struct: f,
-        config_files: Vec::new(),
+        config_files: None,
         generate_config: Some(false),
     };
     c.cmd = Some(ConfigOptMyEnum::Cmd3(a));

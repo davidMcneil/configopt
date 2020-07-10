@@ -38,8 +38,13 @@ pub fn patch_for_struct(parsed: &[ParsedField], configopt_ident: &Ident) -> Toke
         quote! {
             use ::std::convert::TryFrom;
             let mut from_default_config_files = #configopt_ident::from_default_config_files()?;
-            let mut from_config_files = #configopt_ident::try_from(self.config_files.as_slice())?;
-            from_config_files.patch(&mut from_default_config_files);
+            let mut from_config_files = if let Some(config_files) = &self.config_files {
+                let mut from_config_files = #configopt_ident::try_from(config_files.as_slice())?;
+                from_config_files.patch(&mut from_default_config_files);
+                from_config_files
+            } else {
+                from_default_config_files
+            };
             self.patch(&mut from_config_files);
             #patch_subcommands
             Ok(self)

@@ -58,22 +58,9 @@ pub(crate) fn patch_with_prefix(
                     #self_field.patch(#other_field);
                 }
             } else {
-                match field.structopt_ty() {
-                    StructOptTy::Vec => quote_spanned! {span=>
-                        if (#self_field).is_empty() {
-                            ::std::mem::swap(#self_field, #other_field);
-                        }
-                    },
-                    StructOptTy::Bool
-                    | StructOptTy::Option
-                    | StructOptTy::OptionOption
-                    | StructOptTy::OptionVec
-                    | StructOptTy::Other => {
-                        quote_spanned! {span=>
-                            if (#self_field).is_none() {
-                                #deref_self_field = (#other_field).take();
-                            }
-                        }
+                quote_spanned! {span=>
+                    if (#self_field).is_none() {
+                        #deref_self_field = (#other_field).take();
                     }
                 }
             }
@@ -103,22 +90,9 @@ pub(crate) fn take_with_prefix(
                     #self_field.take(#other_field);
                 }
             } else {
-                match field.structopt_ty() {
-                    StructOptTy::Vec => quote_spanned! {span=>
-                        if !(#other_field).is_empty() {
-                            ::std::mem::swap(#self_field, #other_field);
-                        }
-                    },
-                    StructOptTy::Bool
-                    | StructOptTy::Option
-                    | StructOptTy::OptionOption
-                    | StructOptTy::OptionVec
-                    | StructOptTy::Other => {
-                        quote_spanned! {span=>
-                            if (#other_field).is_some() {
-                                #deref_self_field = (#other_field).take();
-                            }
-                        }
+                quote_spanned! {span=>
+                    if (#other_field).is_some() {
+                        #deref_self_field = (#other_field).take();
                     }
                 }
             }
@@ -159,13 +133,6 @@ pub(crate) fn patch_for_with_prefix(
                 }
             } else {
                 match field.structopt_ty() {
-                    StructOptTy::Vec => {
-                        quote_spanned! {span=>
-                            if (#other_field).is_empty() {
-                                ::std::mem::swap(#other_field, #self_field);
-                            }
-                        }
-                    }
                     StructOptTy::Option | StructOptTy::OptionOption | StructOptTy::OptionVec => {
                         quote_spanned! {span=>
                             if (#other_field).is_none() {
@@ -173,7 +140,7 @@ pub(crate) fn patch_for_with_prefix(
                             }
                         }
                     }
-                    StructOptTy::Bool | StructOptTy::Other => {
+                    StructOptTy::Bool | StructOptTy::Other | StructOptTy::Vec => {
                         quote_spanned! {span=>}
                     }
                 }
@@ -215,11 +182,6 @@ pub(crate) fn take_for_with_prefix(
                 }
             } else {
                 match field.structopt_ty() {
-                    StructOptTy::Vec => quote_spanned! {span=>
-                        if !(#self_field).is_empty() {
-                            ::std::mem::swap(#other_field, #self_field);
-                        }
-                    },
                     StructOptTy::Option | StructOptTy::OptionOption | StructOptTy::OptionVec => {
                         quote_spanned! {span=>
                             if (#self_field).is_some() {
@@ -227,7 +189,7 @@ pub(crate) fn take_for_with_prefix(
                             }
                         }
                     }
-                    StructOptTy::Bool | StructOptTy::Other => {
+                    StructOptTy::Bool | StructOptTy::Other | StructOptTy::Vec => {
                         quote_spanned! {span=>
                             if let Some(value) = (#self_field).take() {
                                 #deref_other_field = value;
@@ -256,16 +218,8 @@ pub(crate) fn is_empty_with_prefix(prefix: &str, fields: &[ParsedField]) -> Toke
                 #self_field.is_none()
             }
         } else {
-            match field.structopt_ty() {
-                StructOptTy::Vec => quote_spanned! {span=>
-                    // TODO: how to handle vectors
-                    #self_field.is_empty()
-                },
-                _ => {
-                    quote_spanned! {span=>
-                        #self_field.is_none()
-                    }
-                }
+            quote_spanned! {span=>
+                #self_field.is_none()
             }
         }
     });
@@ -290,16 +244,8 @@ pub(crate) fn is_complete_with_prefix(prefix: &str, fields: &[ParsedField]) -> T
                 #self_field.as_ref().map_or(false, |val| val.is_complete())
             }
         } else {
-            match field.structopt_ty() {
-                StructOptTy::Vec => quote_spanned! {span=>
-                    // TODO: how to handle vectors
-                    true
-                },
-                _ => {
-                    quote_spanned! {span=>
-                        #self_field.is_some()
-                    }
-                }
+            quote_spanned! {span=>
+                #self_field.is_some()
             }
         }
     });
@@ -325,8 +271,9 @@ pub(crate) fn is_convertible_with_prefix(prefix: &str, fields: &[ParsedField]) -
             }
         } else {
             match field.structopt_ty() {
-                // We do not include `StructOptTy::Bool` here. If there is no value set for the
-                // bool we default the value to `false`.
+                // We intentionally do not include `StructOptTy::Bool` or `StructOptTy::Vec` here.
+                // If there is no value set for the field to the default (ie false for `bool`, []
+                // for `Vec`).
                 StructOptTy::Other => quote_spanned! {span=>
                     #self_field.is_some()
                 },
@@ -358,7 +305,7 @@ pub(crate) fn from(fields: &[ParsedField], other: &Ident) -> TokenStream {
             }
         } else {
             match field.structopt_ty() {
-                StructOptTy::Bool | StructOptTy::Other => quote_spanned! {span=>
+                StructOptTy::Bool | StructOptTy::Vec | StructOptTy::Other => quote_spanned! {span=>
                     #field_ident: Some(#other_field),
                 },
                 _ => {
@@ -392,7 +339,7 @@ pub(crate) fn try_from(fields: &[ParsedField]) -> TokenStream {
             }
         } else {
             match field.structopt_ty() {
-                StructOptTy::Bool => quote_spanned! {span=>
+                StructOptTy::Bool | StructOptTy::Vec => quote_spanned! {span=>
                     #field_ident: #self_field.unwrap_or_default(),
                 },
                 StructOptTy::Other => quote_spanned! {span=>

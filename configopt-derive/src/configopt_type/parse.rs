@@ -151,17 +151,9 @@ impl ParsedField {
 
         retain_attrs(&mut field.attrs, &retained_attrs);
 
-        // If this field was a `Vec` we need to add a default value to allow deserializing the
-        // `ConfigOpt` type from an empty input.
-        if let StructOptTy::Vec = structopt_ty {
-            if retained_attrs.iter().any(|a| a == "serde") {
-                field.attrs.push(parse_quote! {#[serde(default)]})
-            }
-        }
-
         // If the field is not already, wrap its type in an `Option`. This guarantees that the
         // `ConfigOpt` struct can be parsed regardless of complete CLI input.
-        if let StructOptTy::Bool | StructOptTy::Other = structopt_ty {
+        if let StructOptTy::Bool | StructOptTy::Vec | StructOptTy::Other = structopt_ty {
             // If it was a flattened field all of its fields will be optional so it does not need to
             // be wrapped in an `Option`
             if !structopt_flatten {
