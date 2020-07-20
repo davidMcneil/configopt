@@ -9,9 +9,9 @@ pub fn for_struct(fields: &[ParsedField]) -> TokenStream {
         let self_field = quote! {self.#field_ident};
         let span = field.span();
         let serde_name = field.serde_name();
-        if field.subcommand() {
+        if field.is_subcommand() {
             quote! {}
-        } else if field.serde_flatten() {
+        } else if field.is_serde_flatten() {
             quote_spanned! {span=>
                 result = format!("{}{}", result, #self_field.toml_config_with_prefix(&serde_prefix));
             }

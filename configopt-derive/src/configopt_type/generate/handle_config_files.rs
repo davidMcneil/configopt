@@ -23,7 +23,7 @@ pub fn patch_for_struct(parsed: &[ParsedField], configopt_ident: &Ident) -> Toke
     let has_config_fields = parse::has_configopt_fields(parsed);
     let patch_subcommands = parsed
         .iter()
-        .filter(|f| f.subcommand())
+        .filter(|f| f.is_subcommand())
         .map(|field| {
             let field_ident = field.ident();
             let self_field = quote! {self.#field_ident};

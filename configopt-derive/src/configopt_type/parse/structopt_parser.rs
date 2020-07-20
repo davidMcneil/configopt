@@ -12,6 +12,8 @@ use syn::{
 
 #[derive(PartialEq)]
 pub enum StructOptAttr {
+    Short,
+    Long,
     RenameAll(CasingStyle),
     NameLitStr(String),
     Flatten,
@@ -34,6 +36,8 @@ impl Parse for StructOptAttr {
                 let lit_str = lit.value();
 
                 match &*name_str {
+                    "long" => Ok(StructOptAttr::Long),
+                    "short" => Ok(StructOptAttr::Short),
                     "rename_all" => Ok(StructOptAttr::RenameAll(
                         lit_str.parse().expect("infallible parse"),
                     )),
@@ -64,6 +68,8 @@ impl Parse for StructOptAttr {
         } else {
             // Attributes represented with a sole identifier.
             Ok(match name_str.as_ref() {
+                "long" => StructOptAttr::Long,
+                "short" => StructOptAttr::Short,
                 "flatten" => StructOptAttr::Flatten,
                 "subcommand" => StructOptAttr::Subcommand,
                 _ => StructOptAttr::Unknown,
@@ -139,6 +145,14 @@ impl StructOptTy {
         } else {
             Other
         }
+    }
+
+    pub fn is_vec(self) -> bool {
+        matches!(self, Self::Vec)
+    }
+
+    pub fn is_bool(self) -> bool {
+        matches!(self, Self::Bool)
     }
 }
 

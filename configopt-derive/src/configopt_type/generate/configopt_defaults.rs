@@ -4,11 +4,11 @@ use quote::{quote, quote_spanned};
 use syn::spanned::Spanned;
 
 fn to_os_string(field: &ParsedField) -> TokenStream {
-    if field.structopt_flatten() {
+    if field.is_structopt_flatten() {
         panic!("`to_os_string` does not make sense for a flattened field");
     }
 
-    if field.subcommand() {
+    if field.is_subcommand() {
         panic!("`to_os_string` does not make sense for a subcommand field");
     }
 
@@ -43,6 +43,15 @@ fn to_os_string(field: &ParsedField) -> TokenStream {
     //
     // Once Rust has specialization this can be significantly simplified.
     match field.structopt_ty() {
+        StructOptTy::Vec if field.is_positional_vec() => quote_spanned! {span=>
+            {
+                let vec = #self_field.iter()
+                    .map(|value| #to_os_string)
+                    .flatten()
+                    .collect::<Vec<_>>();
+                #join_os_str_vec
+            }
+        },
         StructOptTy::Vec => quote_spanned! {span=>
             {
                 if let Some(value) = &#self_field {
@@ -83,7 +92,7 @@ fn to_os_string(field: &ParsedField) -> TokenStream {
 pub fn for_struct(fields: &[ParsedField]) -> TokenStream {
     let normal_fields = fields
         .iter()
-        .filter(|f| !f.structopt_flatten() && !f.subcommand());
+        .filter(|f| !f.is_structopt_flatten() && !f.is_subcommand());
     let normal_fields = normal_fields
         .map(|field| {
             let arg_name = field.structopt_name();
@@ -93,7 +102,7 @@ pub fn for_struct(fields: &[ParsedField]) -> TokenStream {
             }
         })
         .collect::<TokenStream>();
-    let flat_fields = fields.iter().filter(|f| f.structopt_flatten());
+    let flat_fields = fields.iter().filter(|f| f.is_structopt_flatten());
     let flat_fields = flat_fields
         .map(|field| {
             let field_ident = field.ident();
@@ -105,7 +114,7 @@ pub fn for_struct(fields: &[ParsedField]) -> TokenStream {
             }
         })
         .collect::<TokenStream>();
-    let subcommand_fields = fields.iter().filter(|f| f.subcommand());
+    let subcommand_fields = fields.iter().filter(|f| f.is_subcommand());
     let subcommand_fields = subcommand_fields
         .map(|field| {
             let field_ident = field.ident();

@@ -93,6 +93,7 @@ pub struct ParsedField {
     structopt_flatten: bool,
     serde_flatten: bool,
     subcommand: bool,
+    positional_vec: bool,
     no_wrap: bool,
     structopt_rename: CasingStyle,
     structopt_name: String,
@@ -141,6 +142,11 @@ impl ParsedField {
             StructOptAttr::Subcommand => true,
             _ => false,
         });
+        let positional = structopt_attrs.iter().all(|a| match a {
+            StructOptAttr::Short | StructOptAttr::Long => false,
+            _ => true,
+        });
+        let positional_vec = positional && structopt_ty.is_vec();
 
         // The below logic converts the field into a `ConfigOpt` field
 
@@ -156,14 +162,14 @@ impl ParsedField {
         if let StructOptTy::Bool | StructOptTy::Vec | StructOptTy::Other = structopt_ty {
             // If it was a flattened field all of its fields will be optional so it does not need to
             // be wrapped in an `Option`
-            if !structopt_flatten {
+            if !structopt_flatten && !positional_vec {
                 field.ty = parse_quote!(Option<#ty>);
             }
             // If this field was a `bool` we need to add a default of `true` now that it is wrapped in
             // an `Option`. This preserves the same behavior as if we just had a `bool`, but allows us
             // to detect if the `bool` even has a value. Essentially, it adds a third state of not set
             // (None) to this field.
-            if let StructOptTy::Bool = structopt_ty {
+            if structopt_ty.is_bool() {
                 field
                     .attrs
                     .push(parse_quote! {#[structopt(default_value = "true")]})
@@ -184,6 +190,7 @@ impl ParsedField {
                 _ => false,
             }),
             subcommand,
+            positional_vec,
             no_wrap,
             to_os_string: configopt_attrs.into_iter().find_map(|a| match a {
                 ConfigOptAttr::ToOsString(expr) => Some(expr),
@@ -205,16 +212,20 @@ impl ParsedField {
         &self.configopt_inner_ty
     }
 
-    pub fn structopt_flatten(&self) -> bool {
+    pub fn is_structopt_flatten(&self) -> bool {
         self.structopt_flatten
     }
 
-    pub fn serde_flatten(&self) -> bool {
+    pub fn is_serde_flatten(&self) -> bool {
         self.serde_flatten
     }
 
-    pub fn subcommand(&self) -> bool {
+    pub fn is_subcommand(&self) -> bool {
         self.subcommand
+    }
+
+    pub fn is_positional_vec(&self) -> bool {
+        self.positional_vec
     }
 
     pub fn no_wrap(&self) -> bool {

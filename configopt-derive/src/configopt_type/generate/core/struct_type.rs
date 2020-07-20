@@ -53,10 +53,12 @@ pub(crate) fn patch_with_prefix(
                 deref_other_field: _,
                 deref_self_field,
             } = FieldNames::new(field_ident, self_prefix, other_prefix, references);
-            if field.structopt_flatten() {
+            if field.is_structopt_flatten() {
                 quote_spanned! {span=>
                     #self_field.patch(#other_field);
                 }
+            } else if field.is_positional_vec() {
+                quote_spanned! {span=>}
             } else {
                 quote_spanned! {span=>
                     if (#self_field).is_none() {
@@ -85,9 +87,13 @@ pub(crate) fn take_with_prefix(
                 deref_other_field: _,
                 deref_self_field,
             } = FieldNames::new(field_ident, self_prefix, other_prefix, references);
-            if field.structopt_flatten() {
+            if field.is_structopt_flatten() {
                 quote_spanned! {span=>
                     #self_field.take(#other_field);
+                }
+            } else if field.is_positional_vec() {
+                quote_spanned! {span=>
+                    ::std::mem::swap(#self_field, #other_field);
                 }
             } else {
                 quote_spanned! {span=>
@@ -117,7 +123,7 @@ pub(crate) fn patch_for_with_prefix(
                 deref_self_field: _,
                 deref_other_field,
             } = FieldNames::new(field_ident, self_prefix, other_prefix, references);
-            if field.structopt_flatten() {
+            if field.is_structopt_flatten() {
                 if field.no_wrap() {
                     quote_spanned! {span=>
                         #other_field.patch(#self_field);
@@ -127,7 +133,7 @@ pub(crate) fn patch_for_with_prefix(
                         #self_field.patch_for(#other_field);
                     }
                 }
-            } else if field.subcommand() {
+            } else if field.is_subcommand() {
                 quote_spanned! {span=>
                     // TODO: handle subcommands
                 }
@@ -166,7 +172,7 @@ pub(crate) fn take_for_with_prefix(
                 deref_other_field,
                 deref_self_field: _,
             } = FieldNames::new(field_ident, self_prefix, other_prefix, references);
-            if field.structopt_flatten() {
+            if field.is_structopt_flatten() {
                 if field.no_wrap() {
                     quote_spanned! {span=>
                         #other_field.take(#self_field);
@@ -176,7 +182,7 @@ pub(crate) fn take_for_with_prefix(
                         #self_field.take_for(#other_field);
                     }
                 }
-            } else if field.subcommand() {
+            } else if field.is_subcommand() {
                 quote_spanned! {span=>
                     // TODO: handle subcommands
                 }
@@ -187,6 +193,11 @@ pub(crate) fn take_for_with_prefix(
                             if (#self_field).is_some() {
                                 #deref_other_field = (#self_field).take();
                             }
+                        }
+                    }
+                    StructOptTy::Vec if field.is_positional_vec() => {
+                        quote_spanned! {span=>
+                            ::std::mem::swap(#self_field, #other_field);
                         }
                     }
                     StructOptTy::Bool | StructOptTy::Other | StructOptTy::Vec => {
@@ -209,13 +220,17 @@ pub(crate) fn is_empty_with_prefix(prefix: &str, fields: &[ParsedField]) -> Toke
         let self_field = format!("{}{}", prefix, field_ident)
             .parse::<TokenStream>()
             .unwrap();
-        if field.structopt_flatten() {
+        if field.is_structopt_flatten() {
             quote_spanned! {span=>
                 #self_field.is_empty()
             }
-        } else if field.subcommand() {
+        } else if field.is_subcommand() {
             quote_spanned! {span=>
                 #self_field.is_none()
+            }
+        } else if field.is_positional_vec() {
+            quote_spanned! {span=>
+                true
             }
         } else {
             quote_spanned! {span=>
@@ -235,13 +250,17 @@ pub(crate) fn is_complete_with_prefix(prefix: &str, fields: &[ParsedField]) -> T
         let self_field = format!("{}{}", prefix, field_ident)
             .parse::<TokenStream>()
             .unwrap();
-        if field.structopt_flatten() {
+        if field.is_structopt_flatten() {
             quote_spanned! {span=>
                 #self_field.is_complete()
             }
-        } else if field.subcommand() {
+        } else if field.is_subcommand() {
             quote_spanned! {span=>
                 #self_field.as_ref().map_or(false, |val| val.is_complete())
+            }
+        } else if field.is_positional_vec() {
+            quote_spanned! {span=>
+                true
             }
         } else {
             quote_spanned! {span=>
@@ -261,13 +280,17 @@ pub(crate) fn is_convertible_with_prefix(prefix: &str, fields: &[ParsedField]) -
         let self_field = format!("{}{}", prefix, field_ident)
             .parse::<TokenStream>()
             .unwrap();
-        if field.structopt_flatten() {
+        if field.is_structopt_flatten() {
             quote_spanned! {span=>
                 #self_field.is_convertible()
             }
-        } else if field.subcommand() {
+        } else if field.is_subcommand() {
             quote_spanned! {span=>
                 #self_field.as_ref().map_or(false, |val| val.is_convertible())
+            }
+        } else if field.is_positional_vec() {
+            quote_spanned! {span=>
+                true
             }
         } else {
             match field.structopt_ty() {
@@ -295,16 +318,19 @@ pub(crate) fn from(fields: &[ParsedField], other: &Ident) -> TokenStream {
         let field_ident = field.ident();
         let span = field.span();
         let other_field = quote! {#other.#field_ident};
-        if field.structopt_flatten() {
+        if field.is_structopt_flatten() {
             quote_spanned! {span=>
                 #field_ident: #other_field.into(),
             }
-        } else if field.subcommand() {
+        } else if field.is_subcommand() {
             quote_spanned! {span=>
                 #field_ident: Some(#other_field.into()),
             }
         } else {
             match field.structopt_ty() {
+                StructOptTy::Vec if field.is_positional_vec() => quote_spanned! {span=>
+                    #field_ident: #other_field,
+                },
                 StructOptTy::Bool | StructOptTy::Vec | StructOptTy::Other => quote_spanned! {span=>
                     #field_ident: Some(#other_field),
                 },
@@ -329,16 +355,19 @@ pub(crate) fn try_from(fields: &[ParsedField]) -> TokenStream {
         let span = field.span();
         let self_field = quote! {configopt.#field_ident};
         // We check upfront if the type `is_convertible` so all these `unwrap`'s are ok
-        if field.structopt_flatten() {
+        if field.is_structopt_flatten() {
             quote_spanned! {span=>
                 #field_ident: #self_field.try_into().ok().unwrap(),
             }
-        } else if field.subcommand() {
+        } else if field.is_subcommand() {
             quote_spanned! {span=>
                 #field_ident: #self_field.unwrap().try_into().ok().unwrap(),
             }
         } else {
             match field.structopt_ty() {
+                StructOptTy::Vec if field.is_positional_vec() => quote_spanned! {span=>
+                    #field_ident: #self_field,
+                },
                 StructOptTy::Bool | StructOptTy::Vec => quote_spanned! {span=>
                     #field_ident: #self_field.unwrap_or_default(),
                 },
