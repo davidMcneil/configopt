@@ -120,8 +120,7 @@ pub fn for_struct(fields: &[ParsedField]) -> TokenStream {
             let field_ident = field.ident();
             let self_field = quote! {self.#field_ident};
             quote! {
-                // TODO
-                "cmd3" => {
+                #field_ident => {
                     #self_field
                         .as_ref()
                         .and_then(|value| value.arg_to_os_string(full_arg_path))
