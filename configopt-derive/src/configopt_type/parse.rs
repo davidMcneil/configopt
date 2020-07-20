@@ -160,19 +160,22 @@ impl ParsedField {
         // If the field is not already, wrap its type in an `Option`. This guarantees that the
         // `ConfigOpt` struct can be parsed regardless of complete CLI input.
         if let StructOptTy::Bool | StructOptTy::Vec | StructOptTy::Other = structopt_ty {
-            // If it was a flattened field all of its fields will be optional so it does not need to
-            // be wrapped in an `Option`
-            if !structopt_flatten && !positional_vec {
-                field.ty = parse_quote!(Option<#ty>);
-            }
-            // If this field was a `bool` we need to add a default of `true` now that it is wrapped in
-            // an `Option`. This preserves the same behavior as if we just had a `bool`, but allows us
-            // to detect if the `bool` even has a value. Essentially, it adds a third state of not set
-            // (None) to this field.
+            // If this field was a `bool` we convert it to a `ConfigOptBool`. This adds a third
+            // unknown state to the bool. It is necessary to use a custom type (cv wrapping it in
+            // `Option`) in order to use the `from_flag` parser. Simply wrapping it in `Option`
+            // does not work because it sets `takes_value` this can mess up parsing (eg a flag
+            // followed by a positional value).
             if structopt_ty.is_bool() {
+                field.ty = parse_quote!(::configopt::ConfigOptBool);
                 field
                     .attrs
-                    .push(parse_quote! {#[structopt(default_value = "true")]})
+                    .push(parse_quote! {#[structopt(parse(from_flag = ::configopt::ConfigOptBool::from_flag))]});
+            }
+            // If it was a flattened field all of its fields will be optional so it does not need to
+            // be wrapped in an `Option`
+            // Positional `Vec` arguments are not allowed to be wrapped in an `Option`
+            else if !structopt_flatten && !positional_vec {
+                field.ty = parse_quote!(Option<#ty>);
             }
         }
 

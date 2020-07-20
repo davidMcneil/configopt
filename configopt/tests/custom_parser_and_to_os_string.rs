@@ -29,7 +29,7 @@ fn test_custom_parser_and_to_os_string() {
     let c = ConfigOptMyStruct {
         custom: Some(CustomString(String::from("serde"))),
         config_files: None,
-        generate_config: None,
+        generate_config: None.into(),
     };
     let s = MyStruct::try_from_iter_with_defaults(&["app"], &c).unwrap();
     assert_eq!(s.custom.0, "custom_parser");

@@ -1,4 +1,4 @@
-use configopt::{configopt_fields, ConfigOpt};
+use configopt::{configopt_fields, ConfigOpt, ConfigOptBool};
 use serde::Deserialize;
 use structopt::StructOpt;
 
@@ -25,7 +25,7 @@ fn test_configopt_with_optional_bool() {
     let c = ConfigOptMyStruct {
         maybe: Some(true),
         config_files: None,
-        generate_config: None,
+        generate_config: None.into(),
     };
     let s = MyStruct::try_from_iter_with_defaults(&["app"], &c).unwrap();
     assert_eq!(None, s.maybe);
@@ -39,7 +39,7 @@ fn test_configopt_with_optional_bool() {
     let c = ConfigOptMyStruct {
         maybe: Some(false),
         config_files: None,
-        generate_config: None,
+        generate_config: None.into(),
     };
     let s = MyStruct::try_from_iter_with_defaults(&["app"], &c).unwrap();
     assert_eq!(None, s.maybe);
@@ -65,18 +65,14 @@ fn test_configopt_with_bool() {
     }
 
     let c = ConfigOptMyStruct::from_iter_safe(&["app"]).unwrap();
-    assert_eq!(None, c.maybe);
+    assert_eq!(ConfigOptBool::from(None), c.maybe);
     let c = ConfigOptMyStruct::from_iter_safe(&["app", "--maybe"]).unwrap();
-    assert_eq!(Some(true), c.maybe);
-    let c = ConfigOptMyStruct::from_iter_safe(&["app", "--maybe=false"]).unwrap();
-    assert_eq!(Some(false), c.maybe);
-    let c = ConfigOptMyStruct::from_iter_safe(&["app", "--maybe=true"]).unwrap();
-    assert_eq!(Some(true), c.maybe);
+    assert_eq!(ConfigOptBool::from(Some(true)), c.maybe);
 
     let c = ConfigOptMyStruct {
-        maybe: Some(true),
+        maybe: Some(true).into(),
         config_files: None,
-        generate_config: None,
+        generate_config: None.into(),
     };
     let s = MyStruct::try_from_iter_with_defaults(&["app"], &c).unwrap();
     // We want this to be true, but setting a default value for a boolean is impossible.
@@ -85,9 +81,9 @@ fn test_configopt_with_bool() {
     assert_eq!(true, s.maybe);
 
     let c = ConfigOptMyStruct {
-        maybe: Some(false),
+        maybe: Some(false).into(),
         config_files: None,
-        generate_config: None,
+        generate_config: None.into(),
     };
     let s = MyStruct::try_from_iter_with_defaults(&["app"], &c).unwrap();
     assert_eq!(false, s.maybe);

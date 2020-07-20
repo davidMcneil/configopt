@@ -62,7 +62,7 @@ pub(crate) fn patch_with_prefix(
             } else {
                 quote_spanned! {span=>
                     if (#self_field).is_none() {
-                        #deref_self_field = (#other_field).take();
+                        #deref_self_field = (#other_field).take().into();
                     }
                 }
             }
@@ -98,7 +98,7 @@ pub(crate) fn take_with_prefix(
             } else {
                 quote_spanned! {span=>
                     if (#other_field).is_some() {
-                        #deref_self_field = (#other_field).take();
+                        #deref_self_field = (#other_field).take().into();
                     }
                 }
             }
@@ -331,7 +331,10 @@ pub(crate) fn from(fields: &[ParsedField], other: &Ident) -> TokenStream {
                 StructOptTy::Vec if field.is_positional_vec() => quote_spanned! {span=>
                     #field_ident: #other_field,
                 },
-                StructOptTy::Bool | StructOptTy::Vec | StructOptTy::Other => quote_spanned! {span=>
+                StructOptTy::Bool => quote_spanned! {span=>
+                    #field_ident: #other_field.into(),
+                },
+                StructOptTy::Vec | StructOptTy::Other => quote_spanned! {span=>
                     #field_ident: Some(#other_field),
                 },
                 _ => {

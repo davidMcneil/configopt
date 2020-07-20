@@ -103,7 +103,7 @@ const MY_ENUM_CMD3_ARGS: &[&str] = &[
 fn test_configopt_generate_config() {
     assert_eq!(
         ConfigOptMyStruct {
-            maybe: None,
+            maybe: None.into(),
             numbers: None,
             optional: None,
             not_optional: None,
@@ -112,13 +112,13 @@ fn test_configopt_generate_config() {
             path: None,
             cmd: None,
             config_files: None,
-            generate_config: Some(true),
+            generate_config: Some(true).into(),
         },
         ConfigOptMyStruct::from_iter_safe(&["app", "--generate-config"]).unwrap()
     );
     assert_eq!(
         ConfigOptMyStruct {
-            maybe: None,
+            maybe: None.into(),
             numbers: None,
             optional: None,
             not_optional: None,
@@ -130,20 +130,20 @@ fn test_configopt_generate_config() {
                 field_b: None,
                 flat_struct: ConfigOptFlatStruct {
                     flat_optional: None,
-                    flat_maybe: None,
+                    flat_maybe: None.into(),
                     flat_numbers: None,
                 },
                 config_files: None,
-                generate_config: Some(true)
+                generate_config: Some(true).into()
             })),
             config_files: None,
-            generate_config: None,
+            generate_config: None.into(),
         },
         ConfigOptMyStruct::from_iter_safe(&["app", "cmd3", "--generate-config"]).unwrap()
     );
     assert_eq!(
         ConfigOptMyStruct {
-            maybe: None,
+            maybe: None.into(),
             numbers: None,
             optional: None,
             not_optional: None,
@@ -155,14 +155,14 @@ fn test_configopt_generate_config() {
                 field_b: None,
                 flat_struct: ConfigOptFlatStruct {
                     flat_optional: None,
-                    flat_maybe: None,
+                    flat_maybe: None.into(),
                     flat_numbers: None,
                 },
                 config_files: None,
-                generate_config: Some(true)
+                generate_config: Some(true).into()
             })),
             config_files: None,
-            generate_config: Some(true),
+            generate_config: Some(true).into(),
         },
         ConfigOptMyStruct::from_iter_safe(&[
             "app",
@@ -174,7 +174,7 @@ fn test_configopt_generate_config() {
     );
     assert_eq!(
         ConfigOptMyStruct {
-            maybe: None,
+            maybe: None.into(),
             numbers: None,
             optional: None,
             not_optional: None,
@@ -186,22 +186,16 @@ fn test_configopt_generate_config() {
                 field_b: None,
                 flat_struct: ConfigOptFlatStruct {
                     flat_optional: None,
-                    flat_maybe: None,
+                    flat_maybe: None.into(),
                     flat_numbers: None,
                 },
                 config_files: None,
-                generate_config: Some(false)
+                generate_config: None.into()
             })),
             config_files: None,
-            generate_config: Some(true),
+            generate_config: Some(true).into(),
         },
-        ConfigOptMyStruct::from_iter_safe(&[
-            "app",
-            "--generate-config=true",
-            "cmd3",
-            "--generate-config=false"
-        ])
-        .unwrap()
+        ConfigOptMyStruct::from_iter_safe(&["app", "--generate-config", "cmd3",]).unwrap()
     );
 }
 
@@ -209,7 +203,7 @@ fn test_configopt_generate_config() {
 fn test_configopt_from_cli_no_args() {
     assert_eq!(
         ConfigOptMyStruct {
-            maybe: None,
+            maybe: None.into(),
             numbers: None,
             optional: None,
             not_optional: None,
@@ -218,13 +212,13 @@ fn test_configopt_from_cli_no_args() {
             path: None,
             cmd: None,
             config_files: None,
-            generate_config: None
+            generate_config: None.into()
         },
         ConfigOptMyStruct::from_iter_safe(&["app"]).unwrap()
     );
     assert_eq!(
         ConfigOptMyStruct {
-            maybe: None,
+            maybe: None.into(),
             numbers: None,
             optional: None,
             not_optional: None,
@@ -233,13 +227,13 @@ fn test_configopt_from_cli_no_args() {
             path: None,
             cmd: Some(ConfigOptMyEnum::Cmd1),
             config_files: None,
-            generate_config: None
+            generate_config: None.into()
         },
         ConfigOptMyStruct::from_iter_safe(&["app", "cmd1"]).unwrap()
     );
     assert_eq!(
         ConfigOptMyStruct {
-            maybe: None,
+            maybe: None.into(),
             numbers: None,
             optional: None,
             not_optional: None,
@@ -251,13 +245,13 @@ fn test_configopt_from_cli_no_args() {
                 field_2: None,
             }),
             config_files: None,
-            generate_config: None
+            generate_config: None.into()
         },
         ConfigOptMyStruct::from_iter_safe(&["app", "cmd2"]).unwrap()
     );
     assert_eq!(
         ConfigOptMyStruct {
-            maybe: None,
+            maybe: None.into(),
             numbers: None,
             optional: None,
             not_optional: None,
@@ -269,14 +263,14 @@ fn test_configopt_from_cli_no_args() {
                 field_b: None,
                 flat_struct: ConfigOptFlatStruct {
                     flat_optional: None,
-                    flat_maybe: None,
+                    flat_maybe: None.into(),
                     flat_numbers: None,
                 },
                 config_files: None,
-                generate_config: None
+                generate_config: None.into()
             })),
             config_files: None,
-            generate_config: None
+            generate_config: None.into()
         },
         ConfigOptMyStruct::from_iter_safe(&["app", "cmd3"]).unwrap()
     );
@@ -290,7 +284,7 @@ fn test_configopt_from_cli_all_args() {
     cli.push("cmd1");
     assert_eq!(
         ConfigOptMyStruct {
-            maybe: Some(true),
+            maybe: Some(true).into(),
             numbers: Some(vec![1, 2, 3]),
             optional: Some(String::from("from_cli1")),
             not_optional: Some(String::from("from_cli2")),
@@ -299,7 +293,7 @@ fn test_configopt_from_cli_all_args() {
             path: Some(PathBuf::from("/some/path")),
             cmd: Some(ConfigOptMyEnum::Cmd1),
             config_files: None,
-            generate_config: None
+            generate_config: None.into()
         },
         ConfigOptMyStruct::from_iter_safe(cli).unwrap()
     );
@@ -309,7 +303,7 @@ fn test_configopt_from_cli_all_args() {
     cli.extend(MY_ENUM_CMD2_ARGS);
     assert_eq!(
         ConfigOptMyStruct {
-            maybe: Some(true),
+            maybe: Some(true).into(),
             numbers: Some(vec![1, 2, 3]),
             optional: Some(String::from("from_cli1")),
             not_optional: Some(String::from("from_cli2")),
@@ -321,7 +315,7 @@ fn test_configopt_from_cli_all_args() {
                 field_2: Some(String::from("from_cli4"))
             }),
             config_files: None,
-            generate_config: None
+            generate_config: None.into()
         },
         ConfigOptMyStruct::from_iter_safe(cli).unwrap()
     );
@@ -331,7 +325,7 @@ fn test_configopt_from_cli_all_args() {
     cli.extend(MY_ENUM_CMD3_ARGS);
     assert_eq!(
         ConfigOptMyStruct {
-            maybe: Some(true),
+            maybe: Some(true).into(),
             numbers: Some(vec![1, 2, 3]),
             optional: Some(String::from("from_cli1")),
             not_optional: Some(String::from("from_cli2")),
@@ -343,14 +337,14 @@ fn test_configopt_from_cli_all_args() {
                 field_b: Some(String::from("from_cli5")),
                 flat_struct: ConfigOptFlatStruct {
                     flat_optional: Some(6),
-                    flat_maybe: Some(true),
+                    flat_maybe: Some(true).into(),
                     flat_numbers: Some(vec![7]),
                 },
                 config_files: None,
-                generate_config: None
+                generate_config: None.into()
             })),
             config_files: None,
-            generate_config: None
+            generate_config: None.into()
         },
         ConfigOptMyStruct::from_iter_safe(cli).unwrap()
     );
@@ -477,7 +471,7 @@ fn test_take_for() {
     use configopt::ConfigOpt;
 
     let mut c = ConfigOptMyStruct {
-        maybe: None,
+        maybe: None.into(),
         numbers: None,
         optional: Some(String::from("configopt_optional")),
         not_optional: Some(String::from("configopt_not_optional")),
@@ -486,7 +480,7 @@ fn test_take_for() {
         path: Some(PathBuf::from("/some/path")),
         cmd: None,
         config_files: None,
-        generate_config: None,
+        generate_config: None.into(),
     };
     let mut s =
         MyStruct::try_from_iter_with_defaults(&["app", "cmd3", "--field-a=from_cli"], &c).unwrap();
@@ -500,7 +494,7 @@ fn test_patch_for() {
     use configopt::ConfigOpt;
 
     let mut c = ConfigOptMyStruct {
-        maybe: None,
+        maybe: None.into(),
         numbers: None,
         optional: Some(String::from("optional_from_configopt")),
         not_optional: Some(String::from("not_optional_from_configopt")),
@@ -509,7 +503,7 @@ fn test_patch_for() {
         path: Some(PathBuf::from("/some/path")),
         cmd: None,
         config_files: None,
-        generate_config: None,
+        generate_config: None.into(),
     };
 
     let mut s = MyStruct::try_from_iter_with_defaults(
@@ -554,11 +548,11 @@ fn test_from() {
         path: PathBuf::from("/test/path"),
         cmd: MyEnum::Cmd1,
         config_files: Vec::new(),
-        generate_config: false,
+        generate_config: false.into(),
     };
     let c1 = ConfigOptMyStruct::from(m);
     let c2 = ConfigOptMyStruct {
-        maybe: Some(true),
+        maybe: Some(true).into(),
         numbers: Some(vec![1, 2, 3]),
         optional: None,
         not_optional: Some(String::from("testing123")),
@@ -567,7 +561,7 @@ fn test_from() {
         path: Some(PathBuf::from("/test/path")),
         cmd: Some(ConfigOptMyEnum::Cmd1),
         config_files: Some(Vec::new()),
-        generate_config: Some(false),
+        generate_config: Some(false).into(),
     };
     assert_eq!(c1, c2);
 
@@ -598,7 +592,7 @@ fn test_from() {
     let c1 = ConfigOptMyStruct::from(f);
     let f = ConfigOptFlatStruct {
         flat_optional: None,
-        flat_maybe: Some(true),
+        flat_maybe: Some(true).into(),
         flat_numbers: Some(vec![4, 5, 6]),
     };
     let a = ConfigOptAnotherStruct {
@@ -606,10 +600,10 @@ fn test_from() {
         field_b: None,
         flat_struct: f,
         config_files: Some(Vec::new()),
-        generate_config: Some(false),
+        generate_config: Some(false).into(),
     };
     let c2 = ConfigOptMyStruct {
-        maybe: Some(true),
+        maybe: Some(true).into(),
         numbers: Some(vec![1, 2, 3]),
         optional: None,
         not_optional: Some(String::from("testing123")),
@@ -618,7 +612,7 @@ fn test_from() {
         path: Some(PathBuf::from("/test/path")),
         cmd: Some(ConfigOptMyEnum::Cmd3(a)),
         config_files: Some(Vec::new()),
-        generate_config: Some(false),
+        generate_config: Some(false).into(),
     };
     assert_eq!(c1, c2);
 }
@@ -628,7 +622,7 @@ fn test_try_from() {
     use std::convert::TryFrom;
 
     let mut c = ConfigOptMyStruct {
-        maybe: Some(true),
+        maybe: Some(true).into(),
         numbers: Some(vec![1, 2, 3]),
         optional: None,
         not_optional: None,
@@ -637,7 +631,7 @@ fn test_try_from() {
         path: Some(PathBuf::from("/test/path")),
         cmd: Some(ConfigOptMyEnum::Cmd1),
         config_files: None,
-        generate_config: None,
+        generate_config: None.into(),
     };
     assert!(!c.is_convertible());
     c.not_optional = Some(String::from("testing123"));
@@ -662,7 +656,7 @@ fn test_try_from() {
 
     let f = ConfigOptFlatStruct {
         flat_optional: None,
-        flat_maybe: None,
+        flat_maybe: None.into(),
         flat_numbers: Some(vec![4, 5, 6]),
     };
     let a = ConfigOptAnotherStruct {
@@ -670,10 +664,10 @@ fn test_try_from() {
         field_b: None,
         flat_struct: f,
         config_files: None,
-        generate_config: Some(false),
+        generate_config: Some(false).into(),
     };
     let mut c = ConfigOptMyStruct {
-        maybe: Some(true),
+        maybe: Some(true).into(),
         numbers: Some(vec![1, 2, 3]),
         optional: None,
         not_optional: Some(String::from("testing123")),
@@ -682,12 +676,12 @@ fn test_try_from() {
         path: Some(PathBuf::from("/test/path")),
         cmd: Some(ConfigOptMyEnum::Cmd3(a)),
         config_files: None,
-        generate_config: None,
+        generate_config: None.into(),
     };
     assert!(!c.is_convertible());
     let f = ConfigOptFlatStruct {
         flat_optional: None,
-        flat_maybe: None,
+        flat_maybe: None.into(),
         flat_numbers: Some(vec![4, 5, 6]),
     };
     let a = ConfigOptAnotherStruct {
@@ -695,7 +689,7 @@ fn test_try_from() {
         field_b: None,
         flat_struct: f,
         config_files: None,
-        generate_config: Some(false),
+        generate_config: Some(false).into(),
     };
     c.cmd = Some(ConfigOptMyEnum::Cmd3(a));
     assert!(c.is_convertible());

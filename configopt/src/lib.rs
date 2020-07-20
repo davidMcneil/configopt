@@ -1,5 +1,6 @@
 mod arena_trait;
 mod configopt_arg_to_os_string;
+mod configopt_bool;
 mod error;
 
 use arena_trait::Arena;
@@ -20,6 +21,7 @@ use structopt::{
 };
 
 pub use configopt_arg_to_os_string::ConfigOptArgToOsString;
+pub use configopt_bool::ConfigOptBool;
 pub use configopt_derive::{configopt_fields, ConfigOpt};
 pub use error::{Error, Result};
 
