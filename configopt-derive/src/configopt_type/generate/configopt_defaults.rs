@@ -44,26 +44,30 @@ fn to_os_string(field: &ParsedField) -> TokenStream {
     // Once Rust has specialization this can be significantly simplified.
     match field.structopt_ty() {
         StructOptTy::Vec if field.is_positional_vec() => quote_spanned! {span=>
-            {
-                let vec = #self_field.iter()
-                    .map(|value| #to_os_string)
-                    .flatten()
-                    .collect::<Vec<_>>();
-                #join_os_str_vec
-            }
+            // TODO: This currently does not work. How should `Vec` default values work?
+            // {
+            //     let vec = #self_field.iter()
+            //         .map(|value| #to_os_string)
+            //         .flatten()
+            //         .collect::<Vec<_>>();
+            //     #join_os_str_vec
+            // }
+            None
         },
         StructOptTy::Vec => quote_spanned! {span=>
-            {
-                if let Some(value) = &#self_field {
-                    let vec = value.iter()
-                        .map(|value| #to_os_string)
-                        .flatten()
-                        .collect::<Vec<_>>();
-                    #join_os_str_vec
-                } else {
-                    None
-                }
-            }
+            // TODO: This currently does not work. How should `Vec` default values work?
+            // {
+            //     if let Some(value) = &#self_field {
+            //         let vec = value.iter()
+            //             .map(|value| #to_os_string)
+            //             .flatten()
+            //             .collect::<Vec<_>>();
+            //         #join_os_str_vec
+            //     } else {
+            //         None
+            //     }
+            // }
+            None
         },
         StructOptTy::Bool | StructOptTy::Option | StructOptTy::Other => quote_spanned! {span=>
             #self_field
