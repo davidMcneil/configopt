@@ -80,15 +80,17 @@ fn to_os_string(field: &ParsedField) -> TokenStream {
                 .and_then(|o| o.as_ref().and_then(|value| #to_os_string))
         },
         StructOptTy::OptionVec => quote_spanned! {span=>
-            #self_field
-                .as_ref()
-                .and_then(|vec| {
-                    let vec = vec.iter()
-                        .map(|value| #to_os_string)
-                        .flatten()
-                        .collect::<Vec<_>>();
-                    #join_os_str_vec
-                })
+            // TODO: This currently does not work. How should `Vec` default values work?
+            // #self_field
+            //     .as_ref()
+            //     .and_then(|vec| {
+            //         let vec = vec.iter()
+            //             .map(|value| #to_os_string)
+            //             .flatten()
+            //             .collect::<Vec<_>>();
+            //         #join_os_str_vec
+            //     })
+            None
         },
     }
 }
