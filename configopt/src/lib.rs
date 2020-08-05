@@ -16,7 +16,7 @@ use std::{
     process,
 };
 use structopt::{
-    clap::{App, Result as ClapResult},
+    clap::{App, ErrorKind as ClapErrorKind, Result as ClapResult},
     StructOpt,
 };
 
@@ -113,8 +113,17 @@ pub trait IgnoreHelp: StructOpt + Sized {
         I: IntoIterator,
         I::Item: Into<OsString> + Clone,
     {
-        let iter = filter_help(iter);
-        Self::from_iter_safe(iter)
+        let iter = iter.into_iter().map(Into::into).collect::<Vec<_>>();
+        match Self::from_iter_safe(&iter) {
+            Err(e) if e.kind == ClapErrorKind::HelpDisplayed => {
+                // Only filter the help after ensuring the help will be displayed. This avoids
+                // wrong behavior in which `--help` or `-h` are part of trailing arguments and
+                // intended to be passed to an external command.
+                let iter = filter_help(&iter);
+                Self::from_iter_safe(iter)
+            }
+            result @ _ => result,
+        }
     }
 }
 

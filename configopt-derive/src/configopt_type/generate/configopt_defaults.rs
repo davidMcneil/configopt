@@ -27,7 +27,7 @@ fn to_os_string(field: &ParsedField) -> TokenStream {
         }
     };
     // Code to join a Vec<OsString> into a OsString
-    let join_os_str_vec = quote! {
+    let _join_os_str_vec = quote! {
         let mut result = ::std::ffi::OsString::new();
         for (i, v) in vec.iter().enumerate() {
             if i != 0 {
