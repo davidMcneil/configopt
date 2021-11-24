@@ -22,9 +22,11 @@ pub fn lints() -> TokenStream {
             clippy::perf,
             clippy::deprecated,
             clippy::nursery,
-            clippy::cargo
+            clippy::cargo,
+            clippy::suspicious_else_formatting
         )]
         #[deny(clippy::correctness)]
         #[allow(dead_code, unreachable_code)]
+        #[allow(unused_must_use)]
     }
 }
